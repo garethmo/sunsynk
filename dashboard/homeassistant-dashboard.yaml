@@ -1,0 +1,406 @@
+# Home Assistant Lovelace Dashboard Configuration for Sunsynk Inverter
+# Prefix: sunsynkgm
+# Requires HACS cards:
+#   1. sunsynk-power-flow-card (https://github.com/slipx06/sunsynk-power-flow-card)
+#   2. apexcharts-card (https://github.com/RomRider/apexcharts-card)
+#   3. mushroom (optional, for program scheduling controls)
+
+title: Solar & Sunsynk Monitoring
+views:
+  # =========================================================================
+  # VIEW 1: Main Power Flow & Live Overview
+  # =========================================================================
+  - title: Power Flow
+    path: power-flow
+    icon: mdi:solar-power-variant
+    badges:
+      - entity: binary_sensor.sunsynkgm_grid_connected
+        name: Grid
+      - entity: sensor.sunsynkgm_overall_state
+        name: Inverter State
+      - entity: sensor.sunsynkgm_battery_soc
+        name: Battery SOC
+    cards:
+      # --- Sunsynk Power Flow Card ---
+      - type: custom:sunsynk-power-flow-card
+        cardstyle: full
+        panel_mode: false
+        large_font: true
+        title: Sunsynk GM Power Flow
+        show_solar: true
+        inverter:
+          modern: true
+          autarky: power
+          model: sunsynk
+          auto_scale: false
+        battery:
+          energy: 10640
+          shutdown_soc: 10
+          show_daily: true
+          animation_speed: 6
+          max_power: 5000
+          show_absolute: true
+          show_remaining_energy: true
+          animate: true
+          dynamic_colour: true
+        solar:
+          show_daily: true
+          mppts: 2
+          animation_speed: 9
+          max_power: 5500
+          display_mode: 2
+          pv1_name: North Roof
+          pv2_name: West Roof
+          dynamic_colour: true
+        load:
+          show_daily: true
+          show_aux: true
+          aux_name: Aux Power
+          animation_speed: 8
+          max_power: 8000
+          dynamic_colour: true
+        grid:
+          show_daily_buy: true
+          show_daily_sell: true
+          show_nonessential: true
+          nonessential_name: Non-Essential
+          animation_speed: 8
+          max_power: 8000
+          grid_name: National Grid
+        entities:
+          use_timer_248: switch.sunsynkgm_use_timer
+          priority_load_243: switch.sunsynkgm_priority_load
+          inverter_voltage_154: sensor.sunsynkgm_inverter_voltage
+          load_frequency_192: sensor.sunsynkgm_load_frequency
+          inverter_current_164: sensor.sunsynkgm_inverter_current
+          inverter_power_175: sensor.sunsynkgm_inverter_power
+          grid_connected_status_194: binary_sensor.sunsynkgm_grid_connected
+          inverter_status_59: sensor.sunsynkgm_overall_state
+          day_battery_charge_70: sensor.sunsynkgm_day_battery_charge
+          day_battery_discharge_71: sensor.sunsynkgm_day_battery_discharge
+          battery_voltage_183: sensor.sunsynkgm_battery_voltage
+          battery_soc_184: sensor.sunsynkgm_battery_soc
+          battery_power_190: sensor.sunsynkgm_battery_power
+          battery_current_191: sensor.sunsynkgm_battery_current
+          grid_power_169: sensor.sunsynkgm_grid_power
+          day_grid_import_76: sensor.sunsynkgm_day_grid_import
+          day_grid_export_77: sensor.sunsynkgm_day_grid_export
+          grid_ct_power_172: sensor.sunsynkgm_grid_ct_power
+          day_load_energy_84: sensor.sunsynkgm_day_load_energy
+          essential_power: sensor.sunsynkgm_essential_power
+          nonessential_power: sensor.sunsynkgm_non_essential_power
+          aux_power_166: sensor.sunsynkgm_aux_power
+          day_pv_energy_108: sensor.sunsynkgm_day_pv_energy
+          pv1_power_186: sensor.sunsynkgm_pv1_power
+          pv2_power_187: sensor.sunsynkgm_pv2_power
+          pv1_voltage_109: sensor.sunsynkgm_pv1_voltage
+          pv1_current_110: sensor.sunsynkgm_pv1_current
+          pv2_voltage_111: sensor.sunsynkgm_pv2_voltage
+          pv2_current_112: sensor.sunsynkgm_pv2_current
+          total_pv_generation: sensor.sunsynkgm_total_pv_energy
+          prog1_time: select.sunsynkgm_prog1_time
+          prog1_capacity: number.sunsynkgm_prog1_capacity
+          prog1_charge: select.sunsynkgm_prog1_charge
+          prog2_time: select.sunsynkgm_prog2_time
+          prog2_capacity: number.sunsynkgm_prog2_capacity
+          prog2_charge: select.sunsynkgm_prog2_charge
+          prog3_time: select.sunsynkgm_prog3_time
+          prog3_capacity: number.sunsynkgm_prog3_capacity
+          prog3_charge: select.sunsynkgm_prog3_charge
+          prog4_time: select.sunsynkgm_prog4_time
+          prog4_capacity: number.sunsynkgm_prog4_capacity
+          prog4_charge: select.sunsynkgm_prog4_charge
+          prog5_time: select.sunsynkgm_prog5_time
+          prog5_capacity: number.sunsynkgm_prog5_capacity
+          prog5_charge: select.sunsynkgm_prog5_charge
+          prog6_time: select.sunsynkgm_prog6_time
+          prog6_capacity: number.sunsynkgm_prog6_capacity
+          prog6_charge: select.sunsynkgm_prog6_charge
+
+      # --- Quick Daily Statistics Grid ---
+      - type: glance
+        title: Today Summary
+        columns: 4
+        entities:
+          - entity: sensor.sunsynkgm_day_pv_energy
+            name: PV Generation
+          - entity: sensor.sunsynkgm_day_load_energy
+            name: Consumption
+          - entity: sensor.sunsynkgm_day_grid_import
+            name: Grid Import
+          - entity: sensor.sunsynkgm_day_grid_export
+            name: Grid Export
+
+  # =========================================================================
+  # VIEW 2: Power Graphs & Energy History
+  # =========================================================================
+  - title: Power & Energy Graphs
+    path: graphs
+    icon: mdi:chart-line
+    cards:
+      # --- Live 24-Hour Power Flow History (ApexCharts) ---
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: 24h Power Flow History
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        all_series_config:
+          stroke_width: 2
+          curve: smooth
+        series:
+          - entity: sensor.sunsynkgm_load_power
+            name: Home Load
+            color: '#a855f7'
+            type: area
+            opacity: 0.2
+          - entity: sensor.sunsynkgm_pv_power
+            name: Solar PV
+            color: '#f59e0b'
+            type: line
+          - entity: sensor.sunsynkgm_grid_power
+            name: Grid Power
+            color: '#38bdf8'
+            type: line
+          - entity: sensor.sunsynkgm_battery_power
+            name: Battery Power
+            color: '#10b981'
+            type: line
+
+      # --- Battery State of Charge & Voltage Chart ---
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Battery Performance & SOC %
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        yaxis:
+          - id: soc
+            min: 0
+            max: 100
+            decimals: 0
+            apex_config:
+              title:
+                text: 'SOC (%)'
+          - id: voltage
+            opposite: true
+            decimals: 1
+            apex_config:
+              title:
+                text: 'Volts (V)'
+        series:
+          - entity: sensor.sunsynkgm_battery_soc
+            name: Battery SOC %
+            yaxis_id: soc
+            color: '#10b981'
+            type: area
+            opacity: 0.25
+          - entity: sensor.sunsynkgm_battery_voltage
+            name: Voltage
+            yaxis_id: voltage
+            color: '#f97316'
+            type: line
+
+      # --- Daily Energy Accumulation (Bar Graph) ---
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Daily Energy Totals (Last 7 Days)
+          show_states: true
+        graph_span: 7d
+        span:
+          end: day
+        series:
+          - entity: sensor.sunsynkgm_day_pv_energy
+            name: Solar PV Produced
+            color: '#f59e0b'
+            type: column
+            group_by:
+              func: max
+              duration: 1d
+          - entity: sensor.sunsynkgm_day_load_energy
+            name: Home Energy Consumed
+            color: '#a855f7'
+            type: column
+            group_by:
+              func: max
+              duration: 1d
+          - entity: sensor.sunsynkgm_day_grid_import
+            name: Grid Purchased
+            color: '#38bdf8'
+            type: column
+            group_by:
+              func: max
+              duration: 1d
+
+  # =========================================================================
+  # VIEW 3: Time-of-Use Program Schedules
+  # =========================================================================
+  - title: Programs
+    path: programs
+    icon: mdi:calendar-clock
+    cards:
+      - type: entities
+        title: Inverter Controls & Modes
+        show_header_toggle: false
+        entities:
+          - entity: switch.sunsynkgm_use_timer
+            name: Use Timer (Program Schedule)
+          - entity: switch.sunsynkgm_priority_load
+            name: Priority Load Mode
+          - entity: switch.sunsynkgm_grid_charge_enabled
+            name: Allow Grid Battery Charging
+          - entity: switch.sunsynkgm_solar_export
+            name: Solar Export to Grid
+          - entity: sensor.sunsynkgm_load_limit
+            name: Inverter Load Limit
+          - entity: sensor.sunsynkgm_overall_state
+            name: Overall System State
+
+      # Prog 1 & 2
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Program 1
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog1_time
+                name: Start Time
+              - entity: select.sunsynkgm_prog1_charge
+                name: Charge Mode
+              - entity: number.sunsynkgm_prog1_capacity
+                name: Target SOC %
+              - entity: number.sunsynkgm_prog1_power
+                name: Max Power (W)
+          - type: entities
+            title: Program 2
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog2_time
+                name: Start Time
+              - entity: select.sunsynkgm_prog2_charge
+                name: Charge Mode
+              - entity: number.sunsynkgm_prog2_capacity
+                name: Target SOC %
+              - entity: number.sunsynkgm_prog2_power
+                name: Max Power (W)
+
+      # Prog 3 & 4
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Program 3
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog3_time
+                name: Start Time
+              - entity: select.sunsynkgm_prog3_charge
+                name: Charge Mode
+              - entity: number.sunsynkgm_prog3_capacity
+                name: Target SOC %
+              - entity: number.sunsynkgm_prog3_power
+                name: Max Power (W)
+          - type: entities
+            title: Program 4
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog4_time
+                name: Start Time
+              - entity: select.sunsynkgm_prog4_charge
+                name: Charge Mode
+              - entity: number.sunsynkgm_prog4_capacity
+                name: Target SOC %
+              - entity: number.sunsynkgm_prog4_power
+                name: Max Power (W)
+
+      # Prog 5 & 6
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Program 5
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog5_time
+                name: Start Time
+              - entity: select.sunsynkgm_prog5_charge
+                name: Charge Mode
+              - entity: number.sunsynkgm_prog5_capacity
+                name: Target SOC %
+              - entity: number.sunsynkgm_prog5_power
+                name: Max Power (W)
+          - type: entities
+            title: Program 6
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog6_time
+                name: Start Time
+              - entity: select.sunsynkgm_prog6_charge
+                name: Charge Mode
+              - entity: number.sunsynkgm_prog6_capacity
+                name: Target SOC %
+              - entity: number.sunsynkgm_prog6_power
+                name: Max Power (W)
+
+  # =========================================================================
+  # VIEW 4: Battery & Electrical Diagnostics
+  # =========================================================================
+  - title: Diagnostics
+    path: diagnostics
+    icon: mdi:gauge
+    cards:
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Battery Health & Limits
+            show_header_toggle: false
+            entities:
+              - entity: sensor.sunsynkgm_battery_soc
+                name: Current SOC
+              - entity: sensor.sunsynkgm_battery_voltage
+                name: Pack Voltage
+              - entity: sensor.sunsynkgm_battery_current
+                name: Pack Current
+              - entity: sensor.sunsynkgm_battery_power
+                name: Current Power
+              - entity: sensor.sunsynkgm_battery_float_voltage
+                name: Float Voltage (53.08V)
+              - entity: sensor.sunsynkgm_battery_absorption_voltage
+                name: Absorption Voltage (53V)
+              - entity: sensor.sunsynkgm_battery_low_capacity
+                name: Low Capacity Cutoff (15%)
+              - entity: sensor.sunsynkgm_battery_shutdown_capacity
+                name: Shutdown Capacity (10%)
+              - entity: sensor.sunsynkgm_battery_restart_capacity
+                name: Restart Capacity (20%)
+              - entity: sensor.sunsynkgm_battery_max_charge_current
+                name: Max Charge Current (50A)
+              - entity: sensor.sunsynkgm_battery_max_discharge_current
+                name: Max Discharge Current (100A)
+          - type: entities
+            title: Grid & Inverter Diagnostics
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.sunsynkgm_grid_connected
+                name: Grid Connected Status
+              - entity: sensor.sunsynkgm_grid_frequency
+                name: Grid Frequency (49.65Hz)
+              - entity: sensor.sunsynkgm_grid_ct_power
+                name: Grid External CT Power (-2W)
+              - entity: sensor.sunsynkgm_grid_voltage
+                name: Grid Voltage
+              - entity: sensor.sunsynkgm_grid_current
+                name: Grid Current
+              - entity: sensor.sunsynkgm_inverter_power
+                name: Inverter Power (-40W)
+              - entity: sensor.sunsynkgm_inverter_current
+                name: Inverter Current
+              - entity: sensor.sunsynkgm_load_frequency
+                name: Load Output Frequency
+              - entity: sensor.sunsynkgm_total_battery_charge
+                name: Lifetime Battery Charge (kWh)
+              - entity: sensor.sunsynkgm_total_battery_discharge
+                name: Lifetime Battery Discharge (kWh)
+              - entity: sensor.sunsynkgm_total_pv_energy
+                name: Lifetime PV Energy (kWh)

@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sunsynk Solar Monitoring Dashboard</title>
+  <!-- Chart.js for power and energy graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- MQTT.js for browser WebSocket MQTT connection -->
+  <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
+  
+  <style>
+    /* CSS Variables for design system, theming, and layout */
+    :root {
+      --bg-primary: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-card: #243248;
+      --bg-hover: #334155;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --color-solar: #f59e0b;
+      --color-solar-bg: rgba(245, 158, 11, 0.15);
+      --color-battery: #10b981;
+      --color-battery-bg: rgba(16, 185, 129, 0.15);
+      --color-grid: #38bdf8;
+      --color-grid-bg: rgba(56, 189, 248, 0.15);
+      --color-load: #a855f7;
+      --color-load-bg: rgba(168, 85, 247, 0.15);
+      --color-inverter: #6366f1;
+      --color-inverter-bg: rgba(99, 102, 241, 0.15);
+      --color-warning: #f97316;
+      --color-danger: #ef4444;
+      
+      --border-color: #334155;
+      --border-radius-sm: 8px;
+      --border-radius-md: 12px;
+      --border-radius-lg: 16px;
+      
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      line-height: 1.5;
+      padding: 16px;
+      min-height: 100vh;
+    }
+
+    /* Top Navigation Header */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px 20px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      margin-bottom: 20px;
+      box-shadow: var(--box-shadow);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+
+    .brand-badge {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: var(--color-inverter-bg);
+      color: var(--color-inverter);
+      border: 1px solid var(--color-inverter);
+      font-weight: 600;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Tab Navigation */
+    .tab-nav {
+      display: flex;
+      gap: 6px;
+      background-color: var(--bg-card);
+      padding: 4px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background-color: var(--color-inverter);
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+    }
+
+    /* Circular Energy Distribution Diagram Styles */
+    .energy-distribution-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .energy-circle-svg {
+      width: 100%;
+      max-width: 480px;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    .gauge-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .gauge-box {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gauge-val-big {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 8px 0;
+    }
+
+    .gauge-progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: var(--bg-card);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .gauge-fill {
+      height: 100%;
+      border-radius: 9999px;
+      transition: width 0.5s ease;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--color-danger);
+    }
+
+    .status-dot.active {
+      background-color: var(--color-battery);
+      box-shadow: 0 0 8px var(--color-battery);
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-primary {
+      background-color: var(--color-inverter);
+      border-color: var(--color-inverter);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    /* Grid Layout */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 1024px) {
+      .dashboard-layout {
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+    }
+
+    /* Card Wrapper */
+    .dashboard-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 20px;
+      box-shadow: var(--box-shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-main);
+    }
+
+    .card-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: normal;
+    }
+
+    /* Quick KPI Row */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+
+    .kpi-card.solar::before { background-color: var(--color-solar); }
+    .kpi-card.battery::before { background-color: var(--color-battery); }
+    .kpi-card.grid::before { background-color: var(--color-grid); }
+    .kpi-card.load::before { background-color: var(--color-load); }
+
+    .kpi-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .kpi-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .kpi-unit {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .kpi-subtext {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* =========================================
+       Power Flow Card Diagram (Custom SVG Flow)
+       ========================================= */
+    .flow-container {
+      position: relative;
+      width: 100%;
+      background: var(--bg-surface);
+      border-radius: var(--border-radius-md);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .flow-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Animated dashes for active energy streams */
+    .flow-path {
+      fill: none;
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      stroke-dasharray: 6 10;
+      transition: stroke 0.3s ease;
+    }
+
+    .flow-path-inactive {
+      stroke: var(--border-color);
+      stroke-dasharray: none;
+      stroke-width: 2;
+      opacity: 0.5;
+    }
+
+    @keyframes flow-forward {
+      from { stroke-dashoffset: 64; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes flow-reverse {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 64; }
+    }
+
+    .animate-forward {
+      animation: flow-forward 1.8s linear infinite;
+    }
+
+    .animate-reverse {
+      animation: flow-reverse 1.8s linear infinite;
+    }
+
+    /* Node styles in SVG */
+    .flow-node-box {
+      rx: 12;
+      ry: 12;
+      transition: all 0.3s ease;
+    }
+
+    /* Detail Grid & Tabs */
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .data-table th, .data-table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .data-table td:last-child {
+      text-align: right;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Badge Tags */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-info { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+    .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .badge-neutral { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+
+    /* Graph Section */
+    .chart-container {
+      position: relative;
+      height: 250px;
+      width: 100%;
+    }
+
+    /* Settings Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: var(--border-radius-sm);
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 0.875rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--color-inverter);
+    }
+
+    .form-hint {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <header class="dashboard-header">
+    <div class="brand-title">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-solar);">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <div>
+        <h1>Sunsynk Solar Monitor</h1>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Topic: <code id="txt-base-topic">sunsynkgm</code></div>
+      </div>
+      <span class="brand-badge" id="lbl-overall-state">Standby</span>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tab-btn-power">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Power Flow
+      </button>
+      <button class="tab-btn" id="tab-btn-energy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Energy Management
+      </button>
+    </div>
+
+    <div class="header-controls">
+      <!-- Grid Status -->
+      <div class="status-pill">
+        <span class="status-dot active" id="dot-grid"></span>
+        <span id="lbl-grid-connected">Grid: Connected</span>
+      </div>
+
+      <!-- MQTT Status -->
+      <div class="status-pill">
+        <span class="status-dot" id="dot-mqtt"></span>
+        <span id="lbl-mqtt-status">MQTT: Simulating</span>
+      </div>
+
+      <!-- Demo / Sim Switch -->
+      <button class="btn" id="btn-toggle-sim" title="Switch between Demo Simulation & MQTT Live Data">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        <span id="lbl-sim-mode">Sim Active</span>
+      </button>
+
+      <!-- Settings Button -->
+      <button class="btn btn-primary" id="btn-open-settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        MQTT Config
+      </button>
+    </div>
+  </header>
+
+  <!-- VIEW 1: POWER FLOW (LIVE) -->
+  <div id="view-power-flow" class="tab-content active">
+    <!-- KPI Row -->
+    <section class="kpi-row">
+    <!-- Solar Generation -->
+    <div class="kpi-card solar">
+      <div class="kpi-label">
+        <span>Solar PV</span>
+        <span>Today: <strong id="kpi-day-pv">0.0</strong> kWh</span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-pv-power">0</span>
+        <span class="kpi-unit">W</span>
+      </div>
+      <div class="kpi-subtext">
+        <span>PV1: <span id="kpi-pv1-power">0</span>W (<span id="kpi-pv1-volts">2.3</span>V)</span>
+        <span>PV2: <span id="kpi-pv2-power">0</span>W (<span id="kpi-pv2-volts">0.0</span>V)</span>
+      </div>
+    </div>
+
+    <!-- Battery -->
+    <div class="kpi-card battery">
+      <div class="kpi-label">
+        <span>Battery (<span id="kpi-battery-soc">0</span>%)</span>
+        <span id="kpi-battery-flow-mode">Charging</span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-battery-power">62</span>
+        <span class="kpi-unit">W</span>
+      </div>
+      <div class="kpi-subtext">
+        <span><span id="kpi-battery-volts">52.19</span>V &bull; <span id="kpi-battery-amps">1.19</span>A</span>
+        <span>Chg: <span id="kpi-day-batt-chg">0.0</span> / Dis: <span id="kpi-day-batt-dis">0.0</span> kWh</span>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="kpi-card grid">
+      <div class="kpi-label">
+        <span>Grid Power</span>
+        <span id="kpi-grid-flow-mode">Importing</span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-grid-power">671.5</span>
+        <span class="kpi-unit">W</span>
+      </div>
+      <div class="kpi-subtext">
+        <span>Freq: <span id="kpi-grid-freq">49.65</span> Hz &bull; CT: <span id="kpi-grid-ct">-2</span>W</span>
+        <span>Imp: <span id="kpi-day-grid-imp">0.0</span> / Exp: <span id="kpi-day-grid-exp">0.1</span> kWh</span>
+      </div>
+    </div>
+
+    <!-- Home Load -->
+    <div class="kpi-card load">
+      <div class="kpi-label">
+        <span>Home Load</span>
+        <span>Today: <strong id="kpi-day-load">0.0</strong> kWh</span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-load-power">581.5</span>
+        <span class="kpi-unit">W</span>
+      </div>
+      <div class="kpi-subtext">
+        <span>Essential: <span id="kpi-essential-power">631.5</span>W</span>
+        <span>Aux / Non-Ess: <span id="kpi-aux-power">0</span>W</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Dashboard Layout -->
+  <main class="dashboard-layout">
+    
+    <!-- Left Column: Power Flow Animated Diagram & Program Schedule -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Power Flow Card -->
+      <div class="dashboard-card">
+        <div class="card-title">
+          <span>Real-Time Power Flow</span>
+          <span class="card-subtitle">Animated Energy Stream</span>
+        </div>
+
+        <div class="flow-container">
+          <!-- Responsive SVG Power Flow Visualization -->
+          <svg class="flow-svg" viewBox="0 0 760 480" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Gradients for Cards -->
+              <linearGradient id="grad-solar" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#3b2b10"/>
+                <stop offset="100%" stop-color="#1f1c16"/>
+              </linearGradient>
+              <linearGradient id="grad-grid" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#0c2e42"/>
+                <stop offset="100%" stop-color="#152431"/>
+              </linearGradient>
+              <linearGradient id="grad-inverter" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1d1e4e"/>
+                <stop offset="100%" stop-color="#1a1c36"/>
+              </linearGradient>
+              <linearGradient id="grad-battery" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#093424"/>
+                <stop offset="100%" stop-color="#14261f"/>
+              </linearGradient>
+              <linearGradient id="grad-load" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#311747"/>
+                <stop offset="100%" stop-color="#231731"/>
+              </linearGradient>
+
+              <!-- Drop shadow filter -->
+              <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.4"/>
+              </filter>
+            </defs>
+
+            <!-- ================= CONNECTING FLOW PATHS ================= -->
+            <!-- Solar to Inverter -->
+            <path id="path-solar-inv" class="flow-path-inactive" d="M 180 100 L 380 240"/>
+            <!-- Grid to Inverter / Load -->
+            <path id="path-grid-inv" class="flow-path flow-path-grid animate-forward" stroke="var(--color-grid)" d="M 580 100 L 380 240"/>
+            <!-- Inverter to Battery (Bi-directional) -->
+            <path id="path-inv-batt" class="flow-path flow-path-battery animate-forward" stroke="var(--color-battery)" d="M 380 240 L 180 380"/>
+            <!-- Inverter to Load -->
+            <path id="path-inv-load" class="flow-path flow-path-load animate-forward" stroke="var(--color-load)" d="M 380 240 L 580 380"/>
+
+            <!-- ================= NODE CARDS ================= -->
+
+            <!-- 1. SOLAR PV (Top Left: X=100..260, Y=40..160) -->
+            <g transform="translate(100, 40)" filter="url(#shadow)">
+              <rect class="flow-node-box" width="160" height="110" fill="url(#grad-solar)" stroke="var(--color-solar)" stroke-width="1.5"/>
+              <text x="80" y="28" fill="var(--color-solar)" font-size="14" font-weight="bold" text-anchor="middle">SOLAR PV</text>
+              <text id="svg-pv-power" x="80" y="60" fill="#fff" font-size="22" font-weight="bold" text-anchor="middle">0 W</text>
+              <text id="svg-pv-details" x="80" y="82" fill="var(--text-muted)" font-size="11" text-anchor="middle">PV1: 0W | PV2: 0W</text>
+              <text id="svg-pv-today" x="80" y="98" fill="var(--color-solar)" font-size="10" text-anchor="middle">0.0 kWh today</text>
+            </g>
+
+            <!-- 2. NATIONAL GRID (Top Right: X=500..660, Y=40..160) -->
+            <g transform="translate(500, 40)" filter="url(#shadow)">
+              <rect class="flow-node-box" width="160" height="110" fill="url(#grad-grid)" stroke="var(--color-grid)" stroke-width="1.5"/>
+              <text x="80" y="28" fill="var(--color-grid)" font-size="14" font-weight="bold" text-anchor="middle">GRID</text>
+              <text id="svg-grid-power" x="80" y="60" fill="#fff" font-size="22" font-weight="bold" text-anchor="middle">671.5 W</text>
+              <text id="svg-grid-details" x="80" y="82" fill="var(--text-muted)" font-size="11" text-anchor="middle">49.65 Hz &bull; CT: -2W</text>
+              <text id="svg-grid-status" x="80" y="98" fill="#38bdf8" font-size="10" text-anchor="middle">Connected &bull; Buy</text>
+            </g>
+
+            <!-- 3. INVERTER (Center: X=300..460, Y=180..300) -->
+            <g transform="translate(300, 180)" filter="url(#shadow)">
+              <rect class="flow-node-box" width="160" height="120" fill="url(#grad-inverter)" stroke="var(--color-inverter)" stroke-width="2"/>
+              <text x="80" y="28" fill="#a5b4fc" font-size="14" font-weight="bold" text-anchor="middle">HYBRID INVERTER</text>
+              <text id="svg-inv-power" x="80" y="60" fill="#fff" font-size="22" font-weight="bold" text-anchor="middle">-40 W</text>
+              <text id="svg-inv-state" x="80" y="84" fill="#818cf8" font-size="12" font-weight="600" text-anchor="middle">STANDBY</text>
+              <text id="svg-inv-mode" x="80" y="104" fill="var(--text-muted)" font-size="10" text-anchor="middle">Limit: Essentials</text>
+            </g>
+
+            <!-- 4. BATTERY (Bottom Left: X=100..260, Y=320..440) -->
+            <g transform="translate(100, 320)" filter="url(#shadow)">
+              <rect class="flow-node-box" width="160" height="115" fill="url(#grad-battery)" stroke="var(--color-battery)" stroke-width="1.5"/>
+              <text x="80" y="26" fill="var(--color-battery)" font-size="14" font-weight="bold" text-anchor="middle">BATTERY</text>
+              <text id="svg-battery-power" x="80" y="56" fill="#fff" font-size="20" font-weight="bold" text-anchor="middle">62 W</text>
+              <text id="svg-battery-soc" x="80" y="78" fill="#34d399" font-size="13" font-weight="bold" text-anchor="middle">SOC: 0%</text>
+              <text id="svg-battery-specs" x="80" y="96" fill="var(--text-muted)" font-size="10" text-anchor="middle">52.19V &bull; 1.19A</text>
+              <text id="svg-battery-mode" x="80" y="108" fill="var(--color-battery)" font-size="9" text-anchor="middle">Float: 53.08V | Shut: 10%</text>
+            </g>
+
+            <!-- 5. HOME LOAD (Bottom Right: X=500..660, Y=320..440) -->
+            <g transform="translate(500, 320)" filter="url(#shadow)">
+              <rect class="flow-node-box" width="160" height="115" fill="url(#grad-load)" stroke="var(--color-load)" stroke-width="1.5"/>
+              <text x="80" y="26" fill="var(--color-load)" font-size="14" font-weight="bold" text-anchor="middle">HOME LOAD</text>
+              <text id="svg-load-power" x="80" y="56" fill="#fff" font-size="20" font-weight="bold" text-anchor="middle">581.5 W</text>
+              <text id="svg-load-essential" x="80" y="78" fill="#d8b4fe" font-size="12" font-weight="bold" text-anchor="middle">Essential: 631.5 W</text>
+              <text id="svg-load-nonessential" x="80" y="96" fill="var(--text-muted)" font-size="10" text-anchor="middle">Non-Ess: 0W &bull; Aux: 0W</text>
+              <text id="svg-load-today" x="80" y="108" fill="var(--color-load)" font-size="9" text-anchor="middle">0.0 kWh today</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Time of Use Program Matrix (Prog 1 - Prog 6) -->
+      <div class="dashboard-card">
+        <div class="card-title">
+          <span>System Program Schedule</span>
+          <span class="card-subtitle">Prog 1 &ndash; Prog 6 Settings</span>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Slot</th>
+              <th>Start Time</th>
+              <th>Target SOC</th>
+              <th>Charge Mode</th>
+              <th>Max Power</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-programs">
+            <tr>
+              <td><strong>Prog 1</strong></td>
+              <td id="prog1-time">0:00</td>
+              <td><span class="badge badge-info" id="prog1-cap">20%</span></td>
+              <td id="prog1-charge">Allow Grid</td>
+              <td id="prog1-pwr">4000 W</td>
+            </tr>
+            <tr>
+              <td><strong>Prog 2</strong></td>
+              <td id="prog2-time">6:00</td>
+              <td><span class="badge badge-info" id="prog2-cap">20%</span></td>
+              <td id="prog2-charge">Allow Gen</td>
+              <td id="prog2-pwr">4000 W</td>
+            </tr>
+            <tr>
+              <td><strong>Prog 3</strong></td>
+              <td id="prog3-time">12:00</td>
+              <td><span class="badge badge-info" id="prog3-cap">20%</span></td>
+              <td id="prog3-charge">Allow Gen</td>
+              <td id="prog3-pwr">4000 W</td>
+            </tr>
+            <tr>
+              <td><strong>Prog 4</strong></td>
+              <td id="prog4-time">18:00</td>
+              <td><span class="badge badge-info" id="prog4-cap">20%</span></td>
+              <td id="prog4-charge">Allow Grid</td>
+              <td id="prog4-pwr">4000 W</td>
+            </tr>
+            <tr>
+              <td><strong>Prog 5</strong></td>
+              <td id="prog5-time">23:59</td>
+              <td><span class="badge badge-neutral" id="prog5-cap">0%</span></td>
+              <td id="prog5-charge">No Grid or Gen</td>
+              <td id="prog5-pwr">0 W</td>
+            </tr>
+            <tr>
+              <td><strong>Prog 6</strong></td>
+              <td id="prog6-time">0:00</td>
+              <td><span class="badge badge-neutral" id="prog6-cap">0%</span></td>
+              <td id="prog6-charge">No Grid or Gen</td>
+              <td id="prog6-pwr">0 W</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Charts and Technical Sensor Specs -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Power Flow Real-time Graph -->
+      <div class="dashboard-card">
+        <div class="card-title">
+          <span>Live Power History</span>
+          <span class="card-subtitle">Solar vs Load vs Grid vs Battery (W)</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-power"></canvas>
+        </div>
+      </div>
+
+      <!-- Daily Energy Generation vs Consumption -->
+      <div class="dashboard-card">
+        <div class="card-title">
+          <span>Daily Energy Balance</span>
+          <span class="card-subtitle">Cumulative kWh</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-energy"></canvas>
+        </div>
+      </div>
+
+      <!-- Electrical Telemetry & Battery Limits -->
+      <div class="section-grid" style="margin-bottom: 0;">
+        <!-- Inverter & Grid Health -->
+        <div class="dashboard-card">
+          <div class="card-title" style="font-size: 0.95rem;">
+            <span>Inverter & Grid Specs</span>
+          </div>
+          <table class="data-table">
+            <tbody>
+              <tr><td>Grid Frequency</td><td id="dt-grid-freq">49.65 Hz</td></tr>
+              <tr><td>Grid Current / Volts</td><td id="dt-grid-elec">0 A &bull; 0 V</td></tr>
+              <tr><td>Inverter Current</td><td id="dt-inv-curr">0 A</td></tr>
+              <tr><td>Load Frequency</td><td id="dt-load-freq">0 Hz</td></tr>
+              <tr><td>Solar Export</td><td id="dt-solar-export">OFF</td></tr>
+              <tr><td>Priority Load</td><td id="dt-priority-load">OFF</td></tr>
+              <tr><td>Use Timer</td><td id="dt-use-timer">OFF</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Battery Configuration -->
+        <div class="dashboard-card">
+          <div class="card-title" style="font-size: 0.95rem;">
+            <span>Battery Parameters</span>
+          </div>
+          <table class="data-table">
+            <tbody>
+              <tr><td>Float Voltage</td><td id="dt-float-v">53.08 V</td></tr>
+              <tr><td>Absorption Voltage</td><td id="dt-abs-v">53.00 V</td></tr>
+              <tr><td>Equalization Voltage</td><td id="dt-eq-v">0 V</td></tr>
+              <tr><td>Low Cap / Voltage</td><td id="dt-low-cap">15% / 49V</td></tr>
+              <tr><td>Shutdown Cap / Volts</td><td id="dt-shut-cap">10% / 45V</td></tr>
+              <tr><td>Restart Cap / Volts</td><td id="dt-rst-cap">20% / 50V</td></tr>
+              <tr><td>Max Chg / Dischg</td><td id="dt-max-amps">50A / 100A</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+  </div> <!-- /view-power-flow -->
+
+  <!-- VIEW 2: ENERGY MANAGEMENT (HOME ASSISTANT STYLE) -->
+  <div id="view-energy-mgmt" class="tab-content">
+    
+    <!-- Energy Date & Scope Bar -->
+    <div class="dashboard-card" style="margin-bottom: 20px; padding: 14px 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-solar);"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            Home Energy Management
+          </span>
+          <span class="badge badge-info" id="energy-period-badge">Today</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-muted);">
+          <span>Lifetime Solar: <strong style="color: var(--color-solar);" id="em-lifetime-pv">56.4</strong> kWh</span>
+          &bull;
+          <span>Lifetime Batt Chg: <strong style="color: var(--color-battery);" id="em-lifetime-batt">14.7</strong> kWh</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Energy Summary KPIs -->
+    <section class="kpi-row">
+      <div class="kpi-card solar">
+        <div class="kpi-label"><span>Solar Production</span><span>Today</span></div>
+        <div class="kpi-value"><span id="em-kpi-solar">0.0</span> <span class="kpi-unit">kWh</span></div>
+        <div class="kpi-subtext"><span>Total: 56.4 kWh</span><span>PV1 + PV2</span></div>
+      </div>
+      <div class="kpi-card grid">
+        <div class="kpi-label"><span>Grid Purchased</span><span>Buy</span></div>
+        <div class="kpi-value"><span id="em-kpi-grid-buy">0.0</span> <span class="kpi-unit">kWh</span></div>
+        <div class="kpi-subtext"><span>Return: <span id="em-kpi-grid-sell">0.1</span> kWh</span><span>Net: -0.1 kWh</span></div>
+      </div>
+      <div class="kpi-card battery">
+        <div class="kpi-label"><span>Battery Storage</span><span>Today</span></div>
+        <div class="kpi-value"><span id="em-kpi-batt-in">0.0</span> <span class="kpi-unit">kWh In</span></div>
+        <div class="kpi-subtext"><span>Discharged: <span id="em-kpi-batt-out">0.0</span> kWh</span><span>SOC: <span id="em-kpi-batt-soc">0</span>%</span></div>
+      </div>
+      <div class="kpi-card load">
+        <div class="kpi-label"><span>Home Consumption</span><span>Total</span></div>
+        <div class="kpi-value"><span id="em-kpi-home">0.0</span> <span class="kpi-unit">kWh</span></div>
+        <div class="kpi-subtext"><span>Limit: Essentials</span><span>Self-Powered: 100%</span></div>
+      </div>
+    </section>
+
+    <!-- Energy Distribution Diagram (Circular Home Assistant Style) & Gauges -->
+    <div class="dashboard-layout" style="margin-bottom: 20px;">
+      
+      <!-- Energy Distribution Circular Flow Card -->
+      <div class="dashboard-card energy-distribution-card">
+        <div class="card-title" style="width: 100%;">
+          <span>Energy Distribution</span>
+          <span class="card-subtitle">Home Assistant Circular Flow</span>
+        </div>
+
+        <svg class="energy-circle-svg" viewBox="0 0 460 460" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- Center hub shadow -->
+            <filter id="hub-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+            </filter>
+          </defs>
+
+          <!-- Circular Energy Flow Curves (Connecting to Center Hub at 230,230) -->
+          <!-- Solar (230, 70) to Center (230, 230) -->
+          <path id="em-path-solar" class="flow-path animate-forward" stroke="var(--color-solar)" stroke-width="3" d="M 230 115 L 230 230"/>
+          
+          <!-- Grid (80, 230) to Center (230, 230) -->
+          <path id="em-path-grid" class="flow-path flow-path-inactive" stroke="var(--color-grid)" stroke-width="3" d="M 125 230 L 230 230"/>
+
+          <!-- Battery (380, 230) to Center (230, 230) -->
+          <path id="em-path-battery" class="flow-path animate-forward" stroke="var(--color-battery)" stroke-width="3" d="M 335 230 L 230 230"/>
+
+          <!-- Center (230, 230) to Home (230, 390) -->
+          <path id="em-path-home" class="flow-path animate-forward" stroke="var(--color-load)" stroke-width="3" d="M 230 230 L 230 345"/>
+
+          <!-- Central Hub Circle -->
+          <circle cx="230" cy="230" r="32" fill="var(--bg-card)" stroke="var(--border-color)" stroke-width="2" filter="url(#hub-shadow)"/>
+          <circle cx="230" cy="230" r="8" fill="var(--color-inverter)"/>
+
+          <!-- 1. SOLAR CIRCLE (Top: X=230, Y=70) -->
+          <g transform="translate(230, 70)" filter="url(#hub-shadow)">
+            <circle cx="0" cy="0" r="45" fill="var(--bg-surface)" stroke="var(--color-solar)" stroke-width="2.5"/>
+            <!-- Sun Icon -->
+            <circle cx="0" cy="-12" r="8" fill="none" stroke="var(--color-solar)" stroke-width="2"/>
+            <text x="0" y="12" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle" id="em-svg-solar-val">0.0 kWh</text>
+            <text x="0" y="26" fill="var(--color-solar)" font-size="9" font-weight="600" text-anchor="middle">Solar</text>
+          </g>
+
+          <!-- 2. GRID CIRCLE (Left: X=80, Y=230) -->
+          <g transform="translate(80, 230)" filter="url(#hub-shadow)">
+            <circle cx="0" cy="0" r="45" fill="var(--bg-surface)" stroke="var(--color-grid)" stroke-width="2.5"/>
+            <!-- Tower / Pylon Text -->
+            <text x="0" y="-12" fill="var(--color-grid)" font-size="10" font-weight="600" text-anchor="middle">Grid</text>
+            <text x="0" y="8" fill="#fff" font-size="12" font-weight="bold" text-anchor="middle" id="em-svg-grid-buy">0.0 kWh</text>
+            <text x="0" y="24" fill="var(--text-muted)" font-size="9" text-anchor="middle" id="em-svg-grid-sell">0.1 kWh exp</text>
+          </g>
+
+          <!-- 3. BATTERY CIRCLE (Right: X=380, Y=230) -->
+          <g transform="translate(380, 230)" filter="url(#hub-shadow)">
+            <circle cx="0" cy="0" r="45" fill="var(--bg-surface)" stroke="var(--color-battery)" stroke-width="2.5"/>
+            <!-- Battery Icon Text -->
+            <text x="0" y="-12" fill="var(--color-battery)" font-size="10" font-weight="600" text-anchor="middle" id="em-svg-batt-soc">0% SOC</text>
+            <text x="0" y="8" fill="#fff" font-size="12" font-weight="bold" text-anchor="middle" id="em-svg-batt-val">0.0 kWh</text>
+            <text x="0" y="24" fill="var(--text-muted)" font-size="9" text-anchor="middle" id="em-svg-batt-flow">In: 0.0 &bull; Out: 0.0</text>
+          </g>
+
+          <!-- 4. HOME CIRCLE (Bottom: X=230, Y=390) -->
+          <g transform="translate(230, 390)" filter="url(#hub-shadow)">
+            <circle cx="0" cy="0" r="45" fill="var(--bg-surface)" stroke="var(--color-load)" stroke-width="2.5"/>
+            <!-- Home Text -->
+            <text x="0" y="-12" fill="var(--color-load)" font-size="10" font-weight="600" text-anchor="middle">Home</text>
+            <text x="0" y="10" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle" id="em-svg-home-val">0.0 kWh</text>
+            <text x="0" y="26" fill="var(--text-muted)" font-size="9" text-anchor="middle">Consumed</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Gauges & Home Assistant Config Guide -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- Energy Efficiency Gauges -->
+        <div class="gauge-card-grid">
+          <!-- Autarky / Self Sufficiency -->
+          <div class="gauge-box">
+            <span class="card-subtitle">Self-Sufficiency</span>
+            <div class="gauge-val-big" id="em-gauge-autarky" style="color: var(--color-battery);">100%</div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Energy produced on-site</span>
+            <div class="gauge-progress-bar">
+              <div class="gauge-fill" id="em-fill-autarky" style="width: 100%; background-color: var(--color-battery);"></div>
+            </div>
+          </div>
+
+          <!-- Solar Self Consumption -->
+          <div class="gauge-box">
+            <span class="card-subtitle">Solar Self-Consumption</span>
+            <div class="gauge-val-big" id="em-gauge-self-cons" style="color: var(--color-solar);">100%</div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Solar used vs exported</span>
+            <div class="gauge-progress-bar">
+              <div class="gauge-fill" id="em-fill-self-cons" style="width: 100%; background-color: var(--color-solar);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Home Assistant Energy Dashboard Configuration Mapping -->
+        <div class="dashboard-card">
+          <div class="card-title">
+            <span>Home Assistant Energy Setup</span>
+            <a href="https://my.home-assistant.io/redirect/config_energy/" target="_blank" class="badge badge-info" style="text-decoration: none;">Open HA Config &rarr;</a>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+            Configure these exact sensors under <strong>Settings &rarr; Dashboards &rarr; Energy</strong>:
+          </p>
+          <table class="data-table">
+            <thead>
+              <tr><th>Energy Source</th><th>Matched Sensor Entity</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Grid Consumption</strong></td>
+                <td><code>sensor.sunsynkgm_total_grid_import</code></td>
+                <td>0.0 kWh</td>
+              </tr>
+              <tr>
+                <td><strong>Return to Grid</strong></td>
+                <td><code>sensor.sunsynkgm_total_grid_export</code></td>
+                <td>0.0 kWh</td>
+              </tr>
+              <tr>
+                <td><strong>Solar Production</strong></td>
+                <td><code>sensor.sunsynkgm_total_pv_energy</code></td>
+                <td>56.4 kWh</td>
+              </tr>
+              <tr>
+                <td><strong>Battery In (Charge)</strong></td>
+                <td><code>sensor.sunsynkgm_total_battery_charge</code></td>
+                <td>14.7 kWh</td>
+              </tr>
+              <tr>
+                <td><strong>Battery Out (Discharge)</strong></td>
+                <td><code>sensor.sunsynkgm_total_battery_discharge</code></td>
+                <td>0.8 kWh</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Energy Management Graphs Section -->
+    <div class="dashboard-layout">
+      <!-- Hourly Energy Usage (Stacked Bar) -->
+      <div class="dashboard-card">
+        <div class="card-title">
+          <span>Hourly Energy Usage</span>
+          <span class="card-subtitle">Home Consumption Breakdown (kWh)</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-em-usage"></canvas>
+        </div>
+      </div>
+
+      <!-- Solar Generation & Grid Export -->
+      <div class="dashboard-card">
+        <div class="card-title">
+          <span>Solar Production &amp; Feed-In</span>
+          <span class="card-subtitle">Produced vs Exported to Grid</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-em-solar"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /view-energy-mgmt -->
+
+  <!-- MQTT Configuration Modal -->
+  <div class="modal-backdrop" id="modal-mqtt">
+    <div class="modal-dialog">
+      <div class="modal-title">
+        <span>MQTT WebSocket Settings</span>
+        <button class="close-btn" id="btn-close-settings">&times;</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cfg-broker-host">Broker WebSocket URL</label>
+        <input type="text" id="cfg-broker-host" class="form-control" value="ws://localhost:9001" placeholder="ws://192.168.1.100:9001 or wss://...">
+        <div class="form-hint">Make sure Mosquitto has a WebSocket listener configured (e.g. port 9001).</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cfg-base-topic">MQTT Topic Prefix</label>
+        <input type="text" id="cfg-base-topic" class="form-control" value="sunsynkgm" placeholder="sunsynkgm">
+        <div class="form-hint">Listens for <code>sunsynkgm/#</code> or individual sensor topics.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cfg-username">Username (Optional)</label>
+        <input type="text" id="cfg-username" class="form-control" placeholder="mqtt_user">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cfg-password">Password (Optional)</label>
+        <input type="password" id="cfg-password" class="form-control" placeholder="••••••••">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+        <button class="btn" id="btn-cancel-settings">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-settings">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    /**
+     * Sunsynk Solar Monitoring Application Controller
+     * Handles state store, SVG power animations, Chart.js graphs,
+     * demo simulation generator, and live MQTT WebSocket feeds.
+     */
+
+    // Initial state initialized from user's provided snapshot metrics
+    const state = {
+      aux_power: 0,
+      battery_absorption_voltage: 53,
+      battery_current: 1.19,
+      battery_equalization_voltage: 0,
+      battery_float_voltage: 53.08,
+      battery_low_capacity: 15,
+      battery_low_voltage: 49,
+      battery_max_charge_current: 50,
+      battery_max_discharge_current: 100,
+      battery_power: 62,
+      battery_restart_capacity: 20,
+      battery_restart_voltage: 50,
+      battery_shutdown_capacity: 10,
+      battery_shutdown_voltage: 45,
+      battery_soc: 0,
+      battery_voltage: 52.19,
+      date_time: "2000-00-00 0:00:00",
+      day_battery_charge: 0,
+      day_battery_discharge: 0,
+      day_grid_export: 0.1,
+      day_grid_import: 0,
+      day_load_energy: 0,
+      day_pv_energy: 0,
+      essential_power: 631.5,
+      grid_charge_battery_current: 40,
+      grid_charge_enabled: "OFF",
+      grid_connected: "ON",
+      grid_ct_power: -2,
+      grid_current: 0,
+      grid_frequency: 49.65,
+      grid_l2_power: 1,
+      grid_power: 671.5,
+      grid_voltage: 0,
+      inverter_current: 0,
+      inverter_power: -40,
+      inverter_voltage: 0,
+      load_frequency: 0,
+      load_l1_power: 0,
+      load_l2_power: 0,
+      load_limit: "Essentials",
+      load_power: 581.5,
+      near_realtime: "OFF",
+      non_essential_power: 0,
+      overall_state: "standby",
+      priority_load: "OFF",
+      prog1_capacity: 20,
+      prog1_charge: "Allow Grid",
+      prog1_power: 4000,
+      prog1_time: "0:00",
+      prog2_capacity: 20,
+      prog2_charge: "Allow Gen",
+      prog2_power: 4000,
+      prog2_time: "6:00",
+      prog3_capacity: 20,
+      prog3_charge: "Allow Gen",
+      prog3_power: 4000,
+      prog3_time: "12:00",
+      prog4_capacity: 20,
+      prog4_charge: "Allow Grid",
+      prog4_power: 4000,
+      prog4_time: "18:00",
+      prog5_capacity: 0,
+      prog5_charge: "No Grid or Gen",
+      prog5_power: 0,
+      prog5_time: "23:59",
+      prog6_capacity: 0,
+      prog6_charge: "No Grid or Gen",
+      prog6_power: 0,
+      prog6_time: "0:00",
+      pv_power: 0,
+      pv1_current: 0.3,
+      pv1_power: 0,
+      pv1_voltage: 2.3,
+      pv2_current: 0,
+      pv2_power: 0,
+      pv2_voltage: 0,
+      solar_export: "OFF",
+      total_battery_charge: 14.7,
+      total_battery_discharge: 0.8,
+      total_grid_export: 0,
+      total_grid_import: 0,
+      total_pv_energy: 56.4,
+      use_timer: "OFF"
+    };
+
+    let isSimulating = true;
+    let simInterval = null;
+    let mqttClient = null;
+
+    // --- UI Update Functions ---
+    function updateDashboardUI() {
+      // 1. Overall State & Badges
+      const stateEl = document.getElementById("lbl-overall-state");
+      stateEl.textContent = (state.overall_state || "standby").toUpperCase();
+      
+      const gridConnEl = document.getElementById("lbl-grid-connected");
+      const isGridOn = String(state.grid_connected).toUpperCase() === "ON";
+      gridConnEl.textContent = isGridOn ? "Grid: Connected" : "Grid: Disconnected";
+      document.getElementById("dot-grid").className = isGridOn ? "status-dot active" : "status-dot";
+
+      // 2. Solar KPI & SVG
+      const pvPow = Number(state.pv_power) || (Number(state.pv1_power) + Number(state.pv2_power)) || 0;
+      document.getElementById("kpi-pv-power").textContent = Math.round(pvPow);
+      document.getElementById("kpi-pv1-power").textContent = Math.round(state.pv1_power || 0);
+      document.getElementById("kpi-pv1-volts").textContent = state.pv1_voltage || "0";
+      document.getElementById("kpi-pv2-power").textContent = Math.round(state.pv2_power || 0);
+      document.getElementById("kpi-pv2-volts").textContent = state.pv2_voltage || "0";
+      document.getElementById("kpi-day-pv").textContent = (Number(state.day_pv_energy) || 0).toFixed(1);
+
+      document.getElementById("svg-pv-power").textContent = `${Math.round(pvPow)} W`;
+      document.getElementById("svg-pv-details").textContent = `PV1: ${state.pv1_power}W | PV2: ${state.pv2_power}W`;
+      document.getElementById("svg-pv-today").textContent = `${(Number(state.day_pv_energy) || 0).toFixed(1)} kWh today`;
+
+      // 3. Battery KPI & SVG
+      const battPow = Number(state.battery_power) || 0;
+      const isCharging = battPow >= 0;
+      document.getElementById("kpi-battery-power").textContent = Math.abs(Math.round(battPow));
+      document.getElementById("kpi-battery-soc").textContent = state.battery_soc ?? 0;
+      document.getElementById("kpi-battery-volts").textContent = state.battery_voltage || "0";
+      document.getElementById("kpi-battery-amps").textContent = state.battery_current || "0";
+      document.getElementById("kpi-battery-flow-mode").textContent = isCharging ? "Charging" : "Discharging";
+      document.getElementById("kpi-day-batt-chg").textContent = (Number(state.day_battery_charge) || 0).toFixed(1);
+      document.getElementById("kpi-day-batt-dis").textContent = (Number(state.day_battery_discharge) || 0).toFixed(1);
+
+      document.getElementById("svg-battery-power").textContent = `${Math.abs(Math.round(battPow))} W`;
+      document.getElementById("svg-battery-soc").textContent = `SOC: ${state.battery_soc}%`;
+      document.getElementById("svg-battery-specs").textContent = `${state.battery_voltage}V • ${state.battery_current}A`;
+      document.getElementById("svg-battery-mode").textContent = isCharging ? "Charging" : "Discharging";
+
+      // 4. Grid KPI & SVG
+      const gridPow = Number(state.grid_power) || 0;
+      const isImporting = gridPow >= 0;
+      document.getElementById("kpi-grid-power").textContent = Math.abs(Math.round(gridPow));
+      document.getElementById("kpi-grid-freq").textContent = state.grid_frequency || "0";
+      document.getElementById("kpi-grid-ct").textContent = state.grid_ct_power || "0";
+      document.getElementById("kpi-grid-flow-mode").textContent = isImporting ? "Importing" : "Exporting";
+      document.getElementById("kpi-day-grid-imp").textContent = (Number(state.day_grid_import) || 0).toFixed(1);
+      document.getElementById("kpi-day-grid-exp").textContent = (Number(state.day_grid_export) || 0).toFixed(1);
+
+      document.getElementById("svg-grid-power").textContent = `${Math.abs(Math.round(gridPow))} W`;
+      document.getElementById("svg-grid-details").textContent = `${state.grid_frequency} Hz • CT: ${state.grid_ct_power}W`;
+      document.getElementById("svg-grid-status").textContent = isImporting ? "Connected • Buy" : "Connected • Sell";
+
+      // 5. Load KPI & SVG
+      const loadPow = Number(state.load_power) || 0;
+      document.getElementById("kpi-load-power").textContent = Math.round(loadPow);
+      document.getElementById("kpi-essential-power").textContent = state.essential_power || "0";
+      document.getElementById("kpi-aux-power").textContent = (Number(state.aux_power) || 0) + (Number(state.non_essential_power) || 0);
+      document.getElementById("kpi-day-load").textContent = (Number(state.day_load_energy) || 0).toFixed(1);
+
+      document.getElementById("svg-load-power").textContent = `${Math.round(loadPow)} W`;
+      document.getElementById("svg-load-essential").textContent = `Essential: ${state.essential_power} W`;
+      document.getElementById("svg-load-nonessential").textContent = `Non-Ess: ${state.non_essential_power}W • Aux: ${state.aux_power}W`;
+      document.getElementById("svg-load-today").textContent = `${(Number(state.day_load_energy) || 0).toFixed(1)} kWh today`;
+
+      // 6. Inverter SVG Center Card
+      document.getElementById("svg-inv-power").textContent = `${state.inverter_power || 0} W`;
+      document.getElementById("svg-inv-state").textContent = (state.overall_state || "STANDBY").toUpperCase();
+      document.getElementById("svg-inv-mode").textContent = `Limit: ${state.load_limit || "Essentials"}`;
+
+      // 7. Update Flow Lines Animations & Directions
+      updateFlowAnimations(pvPow, gridPow, battPow, loadPow);
+
+      // 8. Update Programs table
+      for (let i = 1; i <= 6; i++) {
+        const timeEl = document.getElementById(`prog${i}-time`);
+        const capEl = document.getElementById(`prog${i}-cap`);
+        const chgEl = document.getElementById(`prog${i}-charge`);
+        const pwrEl = document.getElementById(`prog${i}-pwr`);
+        if (timeEl && state[`prog${i}_time`] !== undefined) timeEl.textContent = state[`prog${i}_time`];
+        if (capEl && state[`prog${i}_capacity`] !== undefined) capEl.textContent = `${state[`prog${i}_capacity`]}%`;
+        if (chgEl && state[`prog${i}_charge`] !== undefined) chgEl.textContent = state[`prog${i}_charge`];
+        if (pwrEl && state[`prog${i}_power`] !== undefined) pwrEl.textContent = `${state[`prog${i}_power`]} W`;
+      }
+
+      // 9. Update Telemetry Tables
+      document.getElementById("dt-grid-freq").textContent = `${state.grid_frequency} Hz`;
+      document.getElementById("dt-grid-elec").textContent = `${state.grid_current} A • ${state.grid_voltage} V`;
+      document.getElementById("dt-inv-curr").textContent = `${state.inverter_current} A`;
+      document.getElementById("dt-load-freq").textContent = `${state.load_frequency} Hz`;
+      document.getElementById("dt-solar-export").textContent = state.solar_export;
+      document.getElementById("dt-priority-load").textContent = state.priority_load;
+      document.getElementById("dt-use-timer").textContent = state.use_timer;
+
+      document.getElementById("dt-float-v").textContent = `${state.battery_float_voltage} V`;
+      document.getElementById("dt-abs-v").textContent = `${state.battery_absorption_voltage} V`;
+      document.getElementById("dt-eq-v").textContent = `${state.battery_equalization_voltage} V`;
+      document.getElementById("dt-low-cap").textContent = `${state.battery_low_capacity}% / ${state.battery_low_voltage}V`;
+      document.getElementById("dt-shut-cap").textContent = `${state.battery_shutdown_capacity}% / ${state.battery_shutdown_voltage}V`;
+      document.getElementById("dt-rst-cap").textContent = `${state.battery_restart_capacity}% / ${state.battery_restart_voltage}V`;
+      document.getElementById("dt-max-amps").textContent = `${state.battery_max_charge_current}A / ${state.battery_max_discharge_current}A`;
+
+      // 10. Update Energy Management Tab UI
+      updateEnergyManagementUI();
+    }
+
+    /**
+     * Updates Home Assistant style Energy Management view
+     */
+    function updateEnergyManagementUI() {
+      const dayPv = Number(state.day_pv_energy) || 0;
+      const dayLoad = Number(state.day_load_energy) || 0;
+      const dayGridBuy = Number(state.day_grid_import) || 0;
+      const dayGridSell = Number(state.day_grid_export) || 0;
+      const dayBattIn = Number(state.day_battery_charge) || 0;
+      const dayBattOut = Number(state.day_battery_discharge) || 0;
+
+      // KPIs
+      document.getElementById("em-kpi-solar").textContent = dayPv.toFixed(1);
+      document.getElementById("em-kpi-grid-buy").textContent = dayGridBuy.toFixed(1);
+      document.getElementById("em-kpi-grid-sell").textContent = dayGridSell.toFixed(1);
+      document.getElementById("em-kpi-batt-in").textContent = dayBattIn.toFixed(1);
+      document.getElementById("em-kpi-batt-out").textContent = dayBattOut.toFixed(1);
+      document.getElementById("em-kpi-batt-soc").textContent = state.battery_soc ?? 0;
+      document.getElementById("em-kpi-home").textContent = dayLoad.toFixed(1);
+
+      document.getElementById("em-lifetime-pv").textContent = (Number(state.total_pv_energy) || 56.4).toFixed(1);
+      document.getElementById("em-lifetime-batt").textContent = (Number(state.total_battery_charge) || 14.7).toFixed(1);
+
+      // SVG Circular Energy Diagram
+      document.getElementById("em-svg-solar-val").textContent = `${dayPv.toFixed(1)} kWh`;
+      document.getElementById("em-svg-grid-buy").textContent = `${dayGridBuy.toFixed(1)} kWh`;
+      document.getElementById("em-svg-grid-sell").textContent = `${dayGridSell.toFixed(1)} kWh exp`;
+      document.getElementById("em-svg-batt-val").textContent = `${dayBattIn.toFixed(1)} kWh`;
+      document.getElementById("em-svg-batt-soc").textContent = `${state.battery_soc}% SOC`;
+      document.getElementById("em-svg-batt-flow").textContent = `In: ${dayBattIn.toFixed(1)} • Out: ${dayBattOut.toFixed(1)}`;
+      document.getElementById("em-svg-home-val").textContent = `${dayLoad.toFixed(1)} kWh`;
+
+      // Energy Path flows
+      const pathSolar = document.getElementById("em-path-solar");
+      const pathGrid = document.getElementById("em-path-grid");
+      const pathBatt = document.getElementById("em-path-battery");
+      const pathHome = document.getElementById("em-path-home");
+
+      if (pathSolar) pathSolar.setAttribute("class", dayPv > 0.05 ? "flow-path animate-forward" : "flow-path flow-path-inactive");
+      if (pathGrid) pathGrid.setAttribute("class", (dayGridBuy > 0.05 || dayGridSell > 0.05) ? "flow-path animate-forward" : "flow-path flow-path-inactive");
+      if (pathBatt) pathBatt.setAttribute("class", (dayBattIn > 0.05 || dayBattOut > 0.05) ? "flow-path animate-forward" : "flow-path flow-path-inactive");
+      if (pathHome) pathHome.setAttribute("class", dayLoad > 0.05 ? "flow-path animate-forward" : "flow-path flow-path-inactive");
+
+      // Autarky / Self-Sufficiency Calculations
+      // Self sufficiency = (Home Consumption - Grid Import) / Home Consumption
+      const autarky = dayLoad > 0 
+        ? Math.max(0, Math.min(100, Math.round(((dayLoad - dayGridBuy) / dayLoad) * 100))) 
+        : 100;
+      
+      // Solar Self-Consumption = (Solar - Grid Export) / Solar
+      const selfCons = dayPv > 0 
+        ? Math.max(0, Math.min(100, Math.round(((dayPv - dayGridSell) / dayPv) * 100))) 
+        : 100;
+
+      const autarkyEl = document.getElementById("em-gauge-autarky");
+      const autarkyFill = document.getElementById("em-fill-autarky");
+      if (autarkyEl) autarkyEl.textContent = `${autarky}%`;
+      if (autarkyFill) autarkyFill.style.width = `${autarky}%`;
+
+      const selfConsEl = document.getElementById("em-gauge-self-cons");
+      const selfConsFill = document.getElementById("em-fill-self-cons");
+      if (selfConsEl) selfConsEl.textContent = `${selfCons}%`;
+      if (selfConsFill) selfConsFill.style.width = `${selfCons}%`;
+    }
+
+    /**
+     * Controls SVG line dash animations depending on power magnitude and direction
+     */
+    function updateFlowAnimations(pv, grid, batt, load) {
+      // Solar to Inverter
+      const pathSolar = document.getElementById("path-solar-inv");
+      if (pv > 20) {
+        pathSolar.setAttribute("class", "flow-path animate-forward");
+        pathSolar.setAttribute("stroke", "var(--color-solar)");
+      } else {
+        pathSolar.setAttribute("class", "flow-path-inactive");
+      }
+
+      // Grid to Inverter (Forward = Import, Reverse = Export)
+      const pathGrid = document.getElementById("path-grid-inv");
+      if (Math.abs(grid) > 20) {
+        pathGrid.setAttribute("stroke", "var(--color-grid)");
+        pathGrid.setAttribute("class", grid > 0 ? "flow-path animate-forward" : "flow-path animate-reverse");
+      } else {
+        pathGrid.setAttribute("class", "flow-path-inactive");
+      }
+
+      // Battery (Forward = Charging from Inverter, Reverse = Discharging to Inverter)
+      const pathBatt = document.getElementById("path-inv-batt");
+      if (Math.abs(batt) > 20) {
+        pathBatt.setAttribute("stroke", "var(--color-battery)");
+        pathBatt.setAttribute("class", batt > 0 ? "flow-path animate-forward" : "flow-path animate-reverse");
+      } else {
+        pathBatt.setAttribute("class", "flow-path-inactive");
+      }
+
+      // Inverter to Load
+      const pathLoad = document.getElementById("path-inv-load");
+      if (load > 20) {
+        pathLoad.setAttribute("class", "flow-path animate-forward");
+        pathLoad.setAttribute("stroke", "var(--color-load)");
+      } else {
+        pathLoad.setAttribute("class", "flow-path-inactive");
+      }
+    }
+
+    // --- Chart.js Initializations ---
+    let powerChart, energyChart, emUsageChart, emSolarChart;
+
+    function initCharts() {
+      // 1. Power Flow History Line Chart
+      const ctxPower = document.getElementById("chart-power").getContext("2d");
+      const timestamps = [];
+      const solarData = [];
+      const loadData = [];
+      const gridData = [];
+      const battData = [];
+
+      // Pre-seed some recent data points
+      const now = new Date();
+      for (let i = 12; i >= 0; i--) {
+        const t = new Date(now.getTime() - i * 10000);
+        timestamps.push(t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        solarData.push(state.pv_power);
+        loadData.push(state.load_power);
+        gridData.push(state.grid_power);
+        battData.push(state.battery_power);
+      }
+
+      powerChart = new Chart(ctxPower, {
+        type: 'line',
+        data: {
+          labels: timestamps,
+          datasets: [
+            {
+              label: 'Load (W)',
+              data: loadData,
+              borderColor: '#a855f7',
+              backgroundColor: 'rgba(168, 85, 247, 0.1)',
+              tension: 0.3,
+              fill: false,
+              borderWidth: 2
+            },
+            {
+              label: 'Grid (W)',
+              data: gridData,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              tension: 0.3,
+              fill: false,
+              borderWidth: 2
+            },
+            {
+              label: 'Solar PV (W)',
+              data: solarData,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              tension: 0.3,
+              fill: false,
+              borderWidth: 2
+            },
+            {
+              label: 'Battery (W)',
+              data: battData,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.3,
+              fill: false,
+              borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { size: 11 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', maxTicksLimit: 6 }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b' }
+            }
+          }
+        }
+      });
+
+      // 2. Daily Energy Breakdown Bar Chart
+      const ctxEnergy = document.getElementById("chart-energy").getContext("2d");
+      energyChart = new Chart(ctxEnergy, {
+        type: 'bar',
+        data: {
+          labels: ['PV Solar', 'Home Load', 'Grid Import', 'Grid Export', 'Batt Chg', 'Batt Dischg'],
+          datasets: [{
+            label: 'Today Energy (kWh)',
+            data: [
+              state.day_pv_energy || 0,
+              state.day_load_energy || 0,
+              state.day_grid_import || 0,
+              state.day_grid_export || 0.1,
+              state.day_battery_charge || 0,
+              state.day_battery_discharge || 0
+            ],
+            backgroundColor: [
+              '#f59e0b',
+              '#a855f7',
+              '#38bdf8',
+              '#0284c7',
+              '#10b981',
+              '#f97316'
+            ],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8', font: { size: 11 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b' }
+            }
+          }
+        }
+      });
+
+      // 3. Home Assistant Energy Management: Hourly Stacked Usage Chart
+      const ctxEmUsage = document.getElementById("chart-em-usage");
+      if (ctxEmUsage) {
+        const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`);
+        // Simulated or live hourly distribution baseline
+        const solarUsage = [0, 0, 0, 0, 0, 0.05, 0.2, 0.5, 0.9, 1.3, 1.6, 1.8, 1.7, 1.4, 0.9, 0.4, 0.1, 0, 0, 0, 0, 0, 0, 0];
+        const batteryUsage = [0.3, 0.2, 0.2, 0.2, 0.2, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.4, 0.5, 0.5, 0.4, 0.3, 0.3];
+        const gridUsage = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.2, 0.3, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1];
+
+        emUsageChart = new Chart(ctxEmUsage, {
+          type: 'bar',
+          data: {
+            labels: hours,
+            datasets: [
+              {
+                label: 'Solar Self-Consumed (kWh)',
+                data: solarUsage,
+                backgroundColor: '#f59e0b',
+                stack: 'consumption'
+              },
+              {
+                label: 'Battery Discharged (kWh)',
+                data: batteryUsage,
+                backgroundColor: '#10b981',
+                stack: 'consumption'
+              },
+              {
+                label: 'Grid Imported (kWh)',
+                data: gridUsage,
+                backgroundColor: '#38bdf8',
+                stack: 'consumption'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { color: '#94a3b8', font: { size: 10 } }
+              }
+            },
+            scales: {
+              x: {
+                stacked: true,
+                grid: { display: false },
+                ticks: { color: '#64748b', maxTicksLimit: 12 }
+              },
+              y: {
+                stacked: true,
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#64748b' }
+              }
+            }
+          }
+        });
+      }
+
+      // 4. Home Assistant Energy Management: Solar Production vs Grid Export
+      const ctxEmSolar = document.getElementById("chart-em-solar");
+      if (ctxEmSolar) {
+        const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`);
+        const solarGen = [0, 0, 0, 0, 0, 0.1, 0.4, 0.8, 1.4, 2.1, 2.6, 2.8, 2.7, 2.2, 1.5, 0.8, 0.2, 0, 0, 0, 0, 0, 0, 0];
+        const gridExp = [0, 0, 0, 0, 0, 0, 0, 0.1, 0.3, 0.6, 0.8, 0.9, 0.8, 0.6, 0.4, 0.1, 0, 0, 0, 0, 0, 0, 0, 0];
+
+        emSolarChart = new Chart(ctxEmSolar, {
+          type: 'bar',
+          data: {
+            labels: hours,
+            datasets: [
+              {
+                label: 'Solar Production (kWh)',
+                data: solarGen,
+                backgroundColor: '#f59e0b',
+                borderRadius: 4
+              },
+              {
+                label: 'Exported to Grid (kWh)',
+                data: gridExp,
+                backgroundColor: '#0284c7',
+                borderRadius: 4
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { color: '#94a3b8', font: { size: 10 } }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: '#64748b', maxTicksLimit: 12 }
+              },
+              y: {
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#64748b' }
+              }
+            }
+          }
+        });
+      }
+    }
+      });
+    }
+
+    function recordChartData() {
+      if (!powerChart) return;
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      powerChart.data.labels.push(timeStr);
+      powerChart.data.datasets[0].data.push(state.load_power);
+      powerChart.data.datasets[1].data.push(state.grid_power);
+      powerChart.data.datasets[2].data.push(state.pv_power);
+      powerChart.data.datasets[3].data.push(state.battery_power);
+
+      if (powerChart.data.labels.length > 25) {
+        powerChart.data.labels.shift();
+        powerChart.data.datasets.forEach(ds => ds.data.shift());
+      }
+      powerChart.update('none');
+
+      // Update energy bar chart
+      if (energyChart) {
+        energyChart.data.datasets[0].data = [
+          state.day_pv_energy || 0,
+          state.day_load_energy || 0,
+          state.day_grid_import || 0,
+          state.day_grid_export || 0,
+          state.day_battery_charge || 0,
+          state.day_battery_discharge || 0
+        ];
+        energyChart.update('none');
+      }
+    }
+
+    // --- Demo Data Generator (Simulates live solar fluctuations) ---
+    function startSimulation() {
+      if (simInterval) clearInterval(simInterval);
+      simInterval = setInterval(() => {
+        // Minor realistic oscillations around user's initial state
+        const loadDrift = (Math.random() - 0.5) * 40;
+        state.load_power = Math.max(100, Math.round((state.load_power + loadDrift) * 10) / 10);
+        state.essential_power = Math.round((state.load_power + 30) * 10) / 10;
+        
+        // Grid covers whatever solar/battery doesn't
+        state.grid_power = Math.round((state.load_power - (state.pv_power || 0) + (state.battery_power > 0 ? state.battery_power : 0)) * 10) / 10;
+        
+        // Slight grid frequency variance
+        state.grid_frequency = (49.6 + (Math.random() * 0.1)).toFixed(2);
+        
+        updateDashboardUI();
+        recordChartData();
+      }, 3000);
+    }
+
+    function stopSimulation() {
+      if (simInterval) {
+        clearInterval(simInterval);
+        simInterval = null;
+      }
+    }
+
+    // --- MQTT WebSocket Handler ---
+    function connectMqtt(brokerUrl, baseTopic, user, pass) {
+      if (mqttClient) {
+        mqttClient.end();
+        mqttClient = null;
+      }
+
+      const statusEl = document.getElementById("lbl-mqtt-status");
+      const dotEl = document.getElementById("dot-mqtt");
+      statusEl.textContent = "MQTT: Connecting...";
+      dotEl.className = "status-dot";
+
+      try {
+        const options = {
+          clientId: `sunsynk_dash_${Math.random().toString(16).substring(2, 8)}`,
+          clean: true,
+          connectTimeout: 5000,
+        };
+        if (user) options.username = user;
+        if (pass) options.password = pass;
+
+        mqttClient = mqtt.connect(brokerUrl, options);
+
+        mqttClient.on('connect', () => {
+          statusEl.textContent = "MQTT: Connected";
+          dotEl.className = "status-dot active";
+          // Subscribe to topic wildcard
+          const subTopic = `${baseTopic}/#`;
+          mqttClient.subscribe(subTopic, (err) => {
+            if (!err) {
+              console.log(`Subscribed to ${subTopic}`);
+            }
+          });
+          // Also subscribe to plain topic in case whole JSON is published to baseTopic
+          mqttClient.subscribe(baseTopic);
+        });
+
+        mqttClient.on('message', (topic, message) => {
+          const msgStr = message.toString();
+          handleMqttMessage(topic, msgStr, baseTopic);
+        });
+
+        mqttClient.on('error', (err) => {
+          console.error("MQTT Error:", err);
+          statusEl.textContent = "MQTT: Error";
+          dotEl.className = "status-dot";
+        });
+
+        mqttClient.on('close', () => {
+          statusEl.textContent = isSimulating ? "MQTT: Simulating" : "MQTT: Offline";
+          dotEl.className = "status-dot";
+        });
+
+      } catch (e) {
+        console.error("Failed to connect MQTT:", e);
+        statusEl.textContent = "MQTT: Conn Failed";
+      }
+    }
+
+    function handleMqttMessage(topic, payload, baseTopic) {
+      try {
+        // Case 1: Payload is a complete JSON object
+        if (payload.startsWith("{") && payload.endsWith("}")) {
+          const data = JSON.parse(payload);
+          Object.assign(state, data);
+          updateDashboardUI();
+          recordChartData();
+          return;
+        }
+
+        // Case 2: Individual sensor subtopic e.g. sunsynkgm/battery_power
+        let sensorKey = topic;
+        if (topic.startsWith(`${baseTopic}/`)) {
+          sensorKey = topic.substring(baseTopic.length + 1);
+        }
+
+        // Attempt numeric parse or string
+        let val = payload;
+        if (!isNaN(payload) && payload.trim() !== '') {
+          val = parseFloat(payload);
+        }
+
+        state[sensorKey] = val;
+        updateDashboardUI();
+        recordChartData();
+
+      } catch (err) {
+        console.warn("Could not parse MQTT payload:", err);
+      }
+    }
+
+    // --- UI Event Listeners ---
+    document.addEventListener("DOMContentLoaded", () => {
+      // Initialize charts and render initial state
+      initCharts();
+      updateDashboardUI();
+      startSimulation();
+
+      // Toggle Simulation Button
+      const btnToggleSim = document.getElementById("btn-toggle-sim");
+      btnToggleSim.addEventListener("click", () => {
+        isSimulating = !isSimulating;
+        const lbl = document.getElementById("lbl-sim-mode");
+        if (isSimulating) {
+          lbl.textContent = "Sim Active";
+          startSimulation();
+          document.getElementById("lbl-mqtt-status").textContent = "MQTT: Simulating";
+        } else {
+          lbl.textContent = "Sim Paused";
+          stopSimulation();
+          if (!mqttClient || !mqttClient.connected) {
+            document.getElementById("lbl-mqtt-status").textContent = "MQTT: Waiting";
+          }
+        }
+      });
+
+      // Settings Modal Open/Close
+      const modal = document.getElementById("modal-mqtt");
+      document.getElementById("btn-open-settings").addEventListener("click", () => modal.classList.add("open"));
+      document.getElementById("btn-close-settings").addEventListener("click", () => modal.classList.remove("open"));
+      document.getElementById("btn-cancel-settings").addEventListener("click", () => modal.classList.remove("open"));
+
+      // Settings Save & Connect
+      document.getElementById("btn-save-settings").addEventListener("click", () => {
+        const broker = document.getElementById("cfg-broker-host").value.trim();
+        const baseTopic = document.getElementById("cfg-base-topic").value.trim() || "sunsynkgm";
+        const user = document.getElementById("cfg-username").value.trim();
+        const pass = document.getElementById("cfg-password").value;
+
+        document.getElementById("txt-base-topic").textContent = baseTopic;
+        modal.classList.remove("open");
+
+        // Connect over WebSocket
+        connectMqtt(broker, baseTopic, user, pass);
+      });
+    });
+  </script>
+</body>
+</html>

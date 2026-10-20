@@ -1,0 +1,303 @@
+# ==============================================================================
+# Home Assistant Lovelace View: Solar, Power Flow & Energy Management
+# Prefix: sunsynkgm
+# ==============================================================================
+
+title: Solar & Energy
+path: solar-energy
+icon: mdi:solar-power-variant
+cards:
+  # ----------------------------------------------------------------------------
+  # CARD 1: Sunsynk Power Flow Card (Real-Time Live Watts)
+  # Requires HACS card: https://github.com/slipx06/sunsynk-power-flow-card
+  # ----------------------------------------------------------------------------
+  - type: custom:sunsynk-power-flow-card
+    cardstyle: full
+    panel_mode: false
+    large_font: true
+    title: Sunsynk Live Power Flow
+    show_solar: true
+    inverter:
+      modern: true
+      autarky: power
+      model: sunsynk
+    battery:
+      energy: 10640
+      shutdown_soc: 10
+      show_daily: true
+      animation_speed: 6
+      max_power: 5000
+      show_absolute: true
+      show_remaining_energy: true
+      animate: true
+      dynamic_colour: true
+    solar:
+      show_daily: true
+      mppts: 2
+      animation_speed: 9
+      max_power: 5500
+      display_mode: 2
+      dynamic_colour: true
+    load:
+      show_daily: true
+      show_aux: true
+      aux_name: Aux Power
+      animation_speed: 8
+      max_power: 8000
+      dynamic_colour: true
+    grid:
+      show_daily_buy: true
+      show_daily_sell: true
+      show_nonessential: true
+      nonessential_name: Non-Essential
+      animation_speed: 8
+      max_power: 8000
+    entities:
+      use_timer_248: switch.sunsynkgm_use_timer
+      priority_load_243: switch.sunsynkgm_priority_load
+      inverter_voltage_154: sensor.sunsynkgm_inverter_voltage
+      load_frequency_192: sensor.sunsynkgm_load_frequency
+      inverter_current_164: sensor.sunsynkgm_inverter_current
+      inverter_power_175: sensor.sunsynkgm_inverter_power
+      grid_connected_status_194: binary_sensor.sunsynkgm_grid_connected
+      inverter_status_59: sensor.sunsynkgm_overall_state
+      day_battery_charge_70: sensor.sunsynkgm_day_battery_charge
+      day_battery_discharge_71: sensor.sunsynkgm_day_battery_discharge
+      battery_voltage_183: sensor.sunsynkgm_battery_voltage
+      battery_soc_184: sensor.sunsynkgm_battery_soc
+      battery_power_190: sensor.sunsynkgm_battery_power
+      battery_current_191: sensor.sunsynkgm_battery_current
+      grid_power_169: sensor.sunsynkgm_grid_power
+      day_grid_import_76: sensor.sunsynkgm_day_grid_import
+      day_grid_export_77: sensor.sunsynkgm_day_grid_export
+      grid_ct_power_172: sensor.sunsynkgm_grid_ct_power
+      day_load_energy_84: sensor.sunsynkgm_day_load_energy
+      essential_power: sensor.sunsynkgm_essential_power
+      nonessential_power: sensor.sunsynkgm_non_essential_power
+      aux_power_166: sensor.sunsynkgm_aux_power
+      day_pv_energy_108: sensor.sunsynkgm_day_pv_energy
+      pv1_power_186: sensor.sunsynkgm_pv1_power
+      pv2_power_187: sensor.sunsynkgm_pv2_power
+      pv1_voltage_109: sensor.sunsynkgm_pv1_voltage
+      pv1_current_110: sensor.sunsynkgm_pv1_current
+      pv2_voltage_111: sensor.sunsynkgm_pv2_voltage
+      pv2_current_112: sensor.sunsynkgm_pv2_current
+      total_pv_generation: sensor.sunsynkgm_total_pv_energy
+
+  # ----------------------------------------------------------------------------
+  # CARD 2: Energy Date Picker (Built-in Home Assistant Energy component)
+  # ----------------------------------------------------------------------------
+  - type: energy-date-selection
+
+  # ----------------------------------------------------------------------------
+  # CARD 3: Energy Distribution Flow Card (The circular kWh flow diagram)
+  # As shown in https://kellerza.github.io/sunsynk/guide/energy-management
+  # ----------------------------------------------------------------------------
+  - type: energy-distribution
+    link_dashboard: true
+
+  # ----------------------------------------------------------------------------
+  # CARD 4: Self-Sufficiency & Solar Consumption Gauges
+  # ----------------------------------------------------------------------------
+  - type: horizontal-stack
+    cards:
+      - type: energy-self-sufficiency-gauge
+      - type: energy-solar-consumed-gauge
+      - type: energy-grid-neutrality-gauge
+
+  # ----------------------------------------------------------------------------
+  # CARD 5: Energy Usage Graph (Hourly consumption by Solar, Battery, Grid)
+  # ----------------------------------------------------------------------------
+  - type: energy-usage-graph
+
+  # ----------------------------------------------------------------------------
+  # CARD 6: Solar Production Graph
+  # ----------------------------------------------------------------------------
+  - type: energy-solar-graph
+
+  # ----------------------------------------------------------------------------
+  # CARD 7: Battery System Storage In/Out Graph
+  # ----------------------------------------------------------------------------
+  - type: energy-battery-graph
+
+  # ----------------------------------------------------------------------------
+  # CARD 8: 24h Real-Time Power Flow Curves (ApexCharts or History Graph)
+  # Requires HACS card: https://github.com/RomRider/apexcharts-card
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: 24h Power Trends (Watts)
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    all_series_config:
+      stroke_width: 2
+      curve: smooth
+    series:
+      - entity: sensor.sunsynkgm_load_power
+        name: Home Load
+        color: '#a855f7'
+        type: area
+        opacity: 0.15
+      - entity: sensor.sunsynkgm_pv_power
+        name: Solar PV
+        color: '#f59e0b'
+        type: line
+      - entity: sensor.sunsynkgm_grid_power
+        name: Grid Power
+        color: '#38bdf8'
+        type: line
+      - entity: sensor.sunsynkgm_battery_power
+        name: Battery Power
+        color: '#10b981'
+        type: line
+
+  # ----------------------------------------------------------------------------
+  # CARD 9: Solar PV Strings Detail
+  # ----------------------------------------------------------------------------
+  - type: entities
+    title: Solar PV Strings
+    show_header_toggle: false
+    entities:
+      - entity: sensor.sunsynkgm_pv_power
+        name: Total PV Power
+      - entity: sensor.sunsynkgm_day_pv_energy
+        name: Today Solar Energy
+      - entity: sensor.sunsynkgm_total_pv_energy
+        name: Total Lifetime Solar Energy
+      - type: section
+        label: PV String 1
+      - entity: sensor.sunsynkgm_pv1_power
+        name: PV1 Power
+      - entity: sensor.sunsynkgm_pv1_voltage
+        name: PV1 Voltage
+      - entity: sensor.sunsynkgm_pv1_current
+        name: PV1 Current
+      - type: section
+        label: PV String 2
+      - entity: sensor.sunsynkgm_pv2_power
+        name: PV2 Power
+      - entity: sensor.sunsynkgm_pv2_voltage
+        name: PV2 Voltage
+      - entity: sensor.sunsynkgm_pv2_current
+        name: PV2 Current
+
+  # ----------------------------------------------------------------------------
+  # CARD 10: Battery Parameters & Cutoffs
+  # ----------------------------------------------------------------------------
+  - type: entities
+    title: Battery Health & Inverter Cutoffs
+    show_header_toggle: false
+    entities:
+      - entity: sensor.sunsynkgm_battery_soc
+        name: State of Charge (SOC)
+      - entity: sensor.sunsynkgm_battery_power
+        name: Current Power
+      - entity: sensor.sunsynkgm_battery_voltage
+        name: Voltage
+      - entity: sensor.sunsynkgm_battery_current
+        name: Current
+      - type: section
+        label: Voltage & Charging Thresholds
+      - entity: sensor.sunsynkgm_battery_float_voltage
+        name: Float Voltage (53.08V)
+      - entity: sensor.sunsynkgm_battery_absorption_voltage
+        name: Absorption Voltage (53V)
+      - entity: sensor.sunsynkgm_battery_equalization_voltage
+        name: Equalization Voltage
+      - entity: sensor.sunsynkgm_battery_low_capacity
+        name: Low Capacity Cutoff (15%)
+      - entity: sensor.sunsynkgm_battery_shutdown_capacity
+        name: Shutdown Capacity (10%)
+      - entity: sensor.sunsynkgm_battery_restart_capacity
+        name: Restart Capacity (20%)
+      - entity: sensor.sunsynkgm_battery_max_charge_current
+        name: Max Charge Current (50A)
+      - entity: sensor.sunsynkgm_battery_max_discharge_current
+        name: Max Discharge Current (100A)
+
+  # ----------------------------------------------------------------------------
+  # CARD 11: Program Timers (Prog 1 to 6)
+  # ----------------------------------------------------------------------------
+  - type: vertical-stack
+    title: Program Schedules (Prog 1 - 6)
+    cards:
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Prog 1 (0:00)
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog1_time
+                name: Time
+              - entity: select.sunsynkgm_prog1_charge
+                name: Charge
+              - entity: number.sunsynkgm_prog1_capacity
+                name: Target SOC
+              - entity: number.sunsynkgm_prog1_power
+                name: Power
+          - type: entities
+            title: Prog 2 (6:00)
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog2_time
+                name: Time
+              - entity: select.sunsynkgm_prog2_charge
+                name: Charge
+              - entity: number.sunsynkgm_prog2_capacity
+                name: Target SOC
+              - entity: number.sunsynkgm_prog2_power
+                name: Power
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Prog 3 (12:00)
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog3_time
+                name: Time
+              - entity: select.sunsynkgm_prog3_charge
+                name: Charge
+              - entity: number.sunsynkgm_prog3_capacity
+                name: Target SOC
+              - entity: number.sunsynkgm_prog3_power
+                name: Power
+          - type: entities
+            title: Prog 4 (18:00)
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog4_time
+                name: Time
+              - entity: select.sunsynkgm_prog4_charge
+                name: Charge
+              - entity: number.sunsynkgm_prog4_capacity
+                name: Target SOC
+              - entity: number.sunsynkgm_prog4_power
+                name: Power
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Prog 5 (23:59)
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog5_time
+                name: Time
+              - entity: select.sunsynkgm_prog5_charge
+                name: Charge
+              - entity: number.sunsynkgm_prog5_capacity
+                name: Target SOC
+              - entity: number.sunsynkgm_prog5_power
+                name: Power
+          - type: entities
+            title: Prog 6 (0:00)
+            show_header_toggle: false
+            entities:
+              - entity: select.sunsynkgm_prog6_time
+                name: Time
+              - entity: select.sunsynkgm_prog6_charge
+                name: Charge
+              - entity: number.sunsynkgm_prog6_capacity
+                name: Target SOC
+              - entity: number.sunsynkgm_prog6_power
+                name: Power

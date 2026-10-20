@@ -1,0 +1,300 @@
+# Home Assistant MQTT Sensor Configuration Reference
+# Topic prefix: sunsynkgm
+# Add this under `mqtt:` in configuration.yaml if not automatically discovered.
+
+mqtt:
+  sensor:
+    # --- Solar PV Sensors ---
+    - name: "Sunsynk PV Power"
+      unique_id: sunsynkgm_pv_power
+      state_topic: "sunsynkgm/pv_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:solar-power
+
+    - name: "Sunsynk PV1 Power"
+      unique_id: sunsynkgm_pv1_power
+      state_topic: "sunsynkgm/pv1_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:solar-panel-large
+
+    - name: "Sunsynk PV1 Voltage"
+      unique_id: sunsynkgm_pv1_voltage
+      state_topic: "sunsynkgm/pv1_voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Sunsynk PV1 Current"
+      unique_id: sunsynkgm_pv1_current
+      state_topic: "sunsynkgm/pv1_current"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+
+    - name: "Sunsynk PV2 Power"
+      unique_id: sunsynkgm_pv2_power
+      state_topic: "sunsynkgm/pv2_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+
+    - name: "Sunsynk PV2 Voltage"
+      unique_id: sunsynkgm_pv2_voltage
+      state_topic: "sunsynkgm/pv2_voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Sunsynk PV2 Current"
+      unique_id: sunsynkgm_pv2_current
+      state_topic: "sunsynkgm/pv2_current"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+
+    - name: "Sunsynk Day PV Energy"
+      unique_id: sunsynkgm_day_pv_energy
+      state_topic: "sunsynkgm/day_pv_energy"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      icon: mdi:solar-power
+
+    - name: "Sunsynk Total PV Energy"
+      unique_id: sunsynkgm_total_pv_energy
+      state_topic: "sunsynkgm/total_pv_energy"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    # --- Battery Sensors ---
+    - name: "Sunsynk Battery Power"
+      unique_id: sunsynkgm_battery_power
+      state_topic: "sunsynkgm/battery_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:battery-charging
+
+    - name: "Sunsynk Battery SOC"
+      unique_id: sunsynkgm_battery_soc
+      state_topic: "sunsynkgm/battery_soc"
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      icon: mdi:battery-high
+
+    - name: "Sunsynk Battery Voltage"
+      unique_id: sunsynkgm_battery_voltage
+      state_topic: "sunsynkgm/battery_voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Sunsynk Battery Current"
+      unique_id: sunsynkgm_battery_current
+      state_topic: "sunsynkgm/battery_current"
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+
+    - name: "Sunsynk Day Battery Charge"
+      unique_id: sunsynkgm_day_battery_charge
+      state_topic: "sunsynkgm/day_battery_charge"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Day Battery Discharge"
+      unique_id: sunsynkgm_day_battery_discharge
+      state_topic: "sunsynkgm/day_battery_discharge"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Total Battery Charge"
+      unique_id: sunsynkgm_total_battery_charge
+      state_topic: "sunsynkgm/total_battery_charge"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Total Battery Discharge"
+      unique_id: sunsynkgm_total_battery_discharge
+      state_topic: "sunsynkgm/total_battery_discharge"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Battery Float Voltage"
+      unique_id: sunsynkgm_battery_float_voltage
+      state_topic: "sunsynkgm/battery_float_voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+
+    - name: "Sunsynk Battery Absorption Voltage"
+      unique_id: sunsynkgm_battery_absorption_voltage
+      state_topic: "sunsynkgm/battery_absorption_voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+
+    - name: "Sunsynk Battery Low Capacity"
+      unique_id: sunsynkgm_battery_low_capacity
+      state_topic: "sunsynkgm/battery_low_capacity"
+      unit_of_measurement: "%"
+
+    - name: "Sunsynk Battery Shutdown Capacity"
+      unique_id: sunsynkgm_battery_shutdown_capacity
+      state_topic: "sunsynkgm/battery_shutdown_capacity"
+      unit_of_measurement: "%"
+
+    - name: "Sunsynk Battery Restart Capacity"
+      unique_id: sunsynkgm_battery_restart_capacity
+      state_topic: "sunsynkgm/battery_restart_capacity"
+      unit_of_measurement: "%"
+
+    - name: "Sunsynk Battery Max Charge Current"
+      unique_id: sunsynkgm_battery_max_charge_current
+      state_topic: "sunsynkgm/battery_max_charge_current"
+      unit_of_measurement: "A"
+
+    - name: "Sunsynk Battery Max Discharge Current"
+      unique_id: sunsynkgm_battery_max_discharge_current
+      state_topic: "sunsynkgm/battery_max_discharge_current"
+      unit_of_measurement: "A"
+
+    # --- Grid Sensors ---
+    - name: "Sunsynk Grid Power"
+      unique_id: sunsynkgm_grid_power
+      state_topic: "sunsynkgm/grid_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:transmission-tower
+
+    - name: "Sunsynk Grid CT Power"
+      unique_id: sunsynkgm_grid_ct_power
+      state_topic: "sunsynkgm/grid_ct_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+
+    - name: "Sunsynk Grid Frequency"
+      unique_id: sunsynkgm_grid_frequency
+      state_topic: "sunsynkgm/grid_frequency"
+      unit_of_measurement: "Hz"
+      device_class: frequency
+      state_class: measurement
+
+    - name: "Sunsynk Grid Voltage"
+      unique_id: sunsynkgm_grid_voltage
+      state_topic: "sunsynkgm/grid_voltage"
+      unit_of_measurement: "V"
+      device_class: voltage
+
+    - name: "Sunsynk Grid Current"
+      unique_id: sunsynkgm_grid_current
+      state_topic: "sunsynkgm/grid_current"
+      unit_of_measurement: "A"
+      device_class: current
+
+    - name: "Sunsynk Day Grid Import"
+      unique_id: sunsynkgm_day_grid_import
+      state_topic: "sunsynkgm/day_grid_import"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Day Grid Export"
+      unique_id: sunsynkgm_day_grid_export
+      state_topic: "sunsynkgm/day_grid_export"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Total Grid Import"
+      unique_id: sunsynkgm_total_grid_import
+      state_topic: "sunsynkgm/total_grid_import"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Total Grid Export"
+      unique_id: sunsynkgm_total_grid_export
+      state_topic: "sunsynkgm/total_grid_export"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    # --- Load & Inverter Sensors ---
+    - name: "Sunsynk Load Power"
+      unique_id: sunsynkgm_load_power
+      state_topic: "sunsynkgm/load_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      icon: mdi:home-lightning-bolt
+
+    - name: "Sunsynk Essential Power"
+      unique_id: sunsynkgm_essential_power
+      state_topic: "sunsynkgm/essential_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+
+    - name: "Sunsynk Non-Essential Power"
+      unique_id: sunsynkgm_non_essential_power
+      state_topic: "sunsynkgm/non_essential_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+
+    - name: "Sunsynk Aux Power"
+      unique_id: sunsynkgm_aux_power
+      state_topic: "sunsynkgm/aux_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+
+    - name: "Sunsynk Day Load Energy"
+      unique_id: sunsynkgm_day_load_energy
+      state_topic: "sunsynkgm/day_load_energy"
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+
+    - name: "Sunsynk Inverter Power"
+      unique_id: sunsynkgm_inverter_power
+      state_topic: "sunsynkgm/inverter_power"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+
+    - name: "Sunsynk Inverter Current"
+      unique_id: sunsynkgm_inverter_current
+      state_topic: "sunsynkgm/inverter_current"
+      unit_of_measurement: "A"
+      device_class: current
+
+    - name: "Sunsynk Load Frequency"
+      unique_id: sunsynkgm_load_frequency
+      state_topic: "sunsynkgm/load_frequency"
+      unit_of_measurement: "Hz"
+      device_class: frequency
+
+    - name: "Sunsynk Overall State"
+      unique_id: sunsynkgm_overall_state
+      state_topic: "sunsynkgm/overall_state"
+      icon: mdi:information-outline
+
+  binary_sensor:
+    - name: "Sunsynk Grid Connected"
+      unique_id: sunsynkgm_grid_connected
+      state_topic: "sunsynkgm/grid_connected"
+      payload_on: "ON"
+      payload_off: "OFF"
+      device_class: connectivity

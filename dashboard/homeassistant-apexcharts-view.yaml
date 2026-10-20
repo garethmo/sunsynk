@@ -1,0 +1,315 @@
+# ==============================================================================
+# Home Assistant View: Solar & Energy Dashboard (All ApexCharts Cards)
+# Uses exclusively: type: custom:apexcharts-card
+# Entity Prefix: sensor.sunsynk_
+# ==============================================================================
+
+title: Solar ApexCharts
+path: solar-apexcharts
+icon: mdi:chart-timeline-variant-shimmer
+cards:
+  # ----------------------------------------------------------------------------
+  # CARD 1: 24h Real-Time Power Flow (Load vs Solar vs Grid vs Battery)
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: 24h Power Flow Overview
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    all_series_config:
+      stroke_width: 2
+      curve: smooth
+    yaxis:
+      - id: power
+        apex_config:
+          title:
+            text: 'Watts (W)'
+    series:
+      - entity: sensor.sunsynk_load_power
+        name: Home Load
+        color: '#a855f7'
+        type: area
+        opacity: 0.15
+        yaxis_id: power
+      - entity: sensor.sunsynk_pv_power
+        name: Solar PV
+        color: '#f59e0b'
+        type: line
+        yaxis_id: power
+      - entity: sensor.sunsynk_grid_power
+        name: Grid Power
+        color: '#38bdf8'
+        type: line
+        yaxis_id: power
+      - entity: sensor.sunsynk_battery_power
+        name: Battery Power
+        color: '#10b981'
+        type: line
+        yaxis_id: power
+
+  # ----------------------------------------------------------------------------
+  # CARD 2: Solar Generation (PV1 vs PV2 vs Total PV Power)
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Solar PV String Generation
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    all_series_config:
+      stroke_width: 2
+      curve: smooth
+    yaxis:
+      - id: solar_power
+        min: 0
+        apex_config:
+          title:
+            text: 'Power (W)'
+    series:
+      - entity: sensor.sunsynk_pv_power
+        name: Total Solar
+        color: '#f59e0b'
+        type: area
+        opacity: 0.25
+        yaxis_id: solar_power
+      - entity: sensor.sunsynk_pv1_power
+        name: String 1 (PV1)
+        color: '#fbbf24'
+        type: line
+        yaxis_id: solar_power
+      - entity: sensor.sunsynk_pv2_power
+        name: String 2 (PV2)
+        color: '#d97706'
+        type: line
+        yaxis_id: solar_power
+
+  # ----------------------------------------------------------------------------
+  # CARD 3: Battery SOC % & Power (Dual Y-Axis)
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Battery SOC % & Power Flow
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    yaxis:
+      - id: soc
+        min: 0
+        max: 100
+        decimals: 0
+        apex_config:
+          title:
+            text: 'State of Charge (%)'
+      - id: power
+        opposite: true
+        apex_config:
+          title:
+            text: 'Battery Power (W)'
+    series:
+      - entity: sensor.sunsynk_battery_soc
+        name: Battery SOC
+        yaxis_id: soc
+        color: '#10b981'
+        type: area
+        opacity: 0.2
+        stroke_width: 2
+      - entity: sensor.sunsynk_battery_power
+        name: Battery Power (+Chg / -Dischg)
+        yaxis_id: power
+        color: '#34d399'
+        type: line
+        stroke_width: 2
+
+  # ----------------------------------------------------------------------------
+  # CARD 4: Battery Electrical Health (Voltage & Current)
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Battery Voltage & Current Tracking
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    yaxis:
+      - id: voltage
+        min: 44
+        max: 56
+        decimals: 1
+        apex_config:
+          title:
+            text: 'Voltage (V)'
+      - id: current
+        opposite: true
+        decimals: 2
+        apex_config:
+          title:
+            text: 'Current (A)'
+    series:
+      - entity: sensor.sunsynk_battery_voltage
+        name: Pack Voltage
+        yaxis_id: voltage
+        color: '#f97316'
+        type: line
+        stroke_width: 2
+      - entity: sensor.sunsynk_battery_current
+        name: Pack Current
+        yaxis_id: current
+        color: '#38bdf8'
+        type: line
+        stroke_width: 2
+
+  # ----------------------------------------------------------------------------
+  # CARD 5: Grid Power & External CT Dynamics
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Grid Interaction & CT Metering
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    all_series_config:
+      stroke_width: 2
+      curve: smooth
+    yaxis:
+      - id: grid_power
+        apex_config:
+          title:
+            text: 'Grid (W)'
+    series:
+      - entity: sensor.sunsynk_grid_power
+        name: Inverter Grid Power
+        yaxis_id: grid_power
+        color: '#0284c7'
+        type: area
+        opacity: 0.15
+      - entity: sensor.sunsynk_grid_ct_power
+        name: External CT Sensor
+        yaxis_id: grid_power
+        color: '#38bdf8'
+        type: line
+
+  # ----------------------------------------------------------------------------
+  # CARD 6: Daily Cumulative Energy Breakdown (Last 7 Days Column Chart)
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Daily Energy Totals (Last 7 Days)
+      show_states: true
+    graph_span: 7d
+    span:
+      end: day
+    yaxis:
+      - id: energy
+        min: 0
+        apex_config:
+          title:
+            text: 'Daily Energy (kWh)'
+    series:
+      - entity: sensor.sunsynk_day_pv_energy
+        name: Solar PV Produced
+        color: '#f59e0b'
+        type: column
+        group_by:
+          func: max
+          duration: 1d
+        yaxis_id: energy
+      - entity: sensor.sunsynk_day_load_energy
+        name: Home Energy Consumed
+        color: '#a855f7'
+        type: column
+        group_by:
+          func: max
+          duration: 1d
+        yaxis_id: energy
+      - entity: sensor.sunsynk_day_grid_import
+        name: Grid Purchased
+        color: '#38bdf8'
+        type: column
+        group_by:
+          func: max
+          duration: 1d
+        yaxis_id: energy
+      - entity: sensor.sunsynk_day_battery_charge
+        name: Battery Charged
+        color: '#10b981'
+        type: column
+        group_by:
+          func: max
+          duration: 1d
+        yaxis_id: energy
+
+  # ----------------------------------------------------------------------------
+  # CARD 7: Grid Frequency & Inverter Power Output
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Grid Frequency & Inverter Power
+      show_states: true
+      colorize_states: true
+    graph_span: 12h
+    yaxis:
+      - id: freq
+        min: 48
+        max: 52
+        decimals: 2
+        apex_config:
+          title:
+            text: 'Frequency (Hz)'
+      - id: inv_pwr
+        opposite: true
+        apex_config:
+          title:
+            text: 'Inverter Power (W)'
+    series:
+      - entity: sensor.sunsynk_grid_frequency
+        name: Grid Frequency
+        yaxis_id: freq
+        color: '#ec4899'
+        type: line
+        stroke_width: 2
+      - entity: sensor.sunsynk_inverter_power
+        name: Inverter Power
+        yaxis_id: inv_pwr
+        color: '#6366f1'
+        type: area
+        opacity: 0.15
+        stroke_width: 2
+
+  # ----------------------------------------------------------------------------
+  # CARD 8: Battery State of Charge Radial Gauge
+  # ----------------------------------------------------------------------------
+  - type: custom:apexcharts-card
+    chart_type: radialBar
+    header:
+      show: true
+      title: Battery SOC % Gauge
+      show_states: true
+      colorize_states: true
+    series:
+      - entity: sensor.sunsynk_battery_soc
+        name: Battery Level
+        color: '#10b981'
+    apex_config:
+      plotOptions:
+        radialBar:
+          startAngle: -135
+          endAngle: 135
+          dataLabels:
+            name:
+              show: true
+              fontSize: '14px'
+              color: '#94a3b8'
+            value:
+              show: true
+              fontSize: '28px'
+              formatter: |
+                EVAL:function(val) {
+                  return val + '%';
+                }
