@@ -6,6 +6,7 @@ from itertools import pairwise
 
 import pytest
 
+from sunsynk.definitions import import_defs
 from sunsynk.definitions.single_phase import AMPS, CELSIUS, SENSORS, VOLT, WATT
 from sunsynk.rwsensors import NumberRWSensor
 from sunsynk.sensors import (
@@ -14,6 +15,7 @@ from sunsynk.sensors import (
     FaultSensor,
     InverterStateSensor,
     MathSensor,
+    PVDynamicTotalSensor,
     SDStatusSensor,
     Sensor,
     Sensor16,
@@ -171,7 +173,7 @@ def test_group_max_size() -> None:
 
 def test_all_groups() -> None:
     """Tests."""
-    s = [SENSORS.all[s] for s in SENSORS.all]
+    s = [s for s in SENSORS.all.values() if not isinstance(s, PVDynamicTotalSensor)]
     for i in range(2, 6):
         _LOG.warning("waste with %d gap: %s", i, waste(group_sensors(s, i)))
 
@@ -406,3 +408,10 @@ def test_override_many() -> None:
     assert s1.factor == 10
     assert s1.min == -50
     assert s1.max == 50
+
+
+def test_three_phase_deprecated() -> None:
+    """Verify three-phase definitions include deprecated mappings (#681, #685)."""
+    defs = import_defs("three-phase")
+    assert defs.deprecated.get("generator_port_usage") == "aux_port_usage"
+    assert defs.deprecated.get("grid_relay_status") == "grid_connected"

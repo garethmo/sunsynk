@@ -93,7 +93,7 @@ project-includes = [
 ]
 
 [tool.pytest]
-ini_options.testpaths = "src\tests"
+ini_options.testpaths = [ "src/tests" ]
 ini_options.pythonpath = [ ".", "src" ]
 ini_options.norecursedirs = [ ".git", "modules" ]
 ini_options.addopts = "--cov=src --cov-report xml:cov.xml"

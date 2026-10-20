@@ -676,6 +676,7 @@ SENSORS += (
 
 SENSORS.deprecated.update(
     {
-        # "priority_mode": "priority_load",
+        "generator_port_usage": "aux_port_usage",
+        "grid_relay_status": "grid_connected",
     }
 )

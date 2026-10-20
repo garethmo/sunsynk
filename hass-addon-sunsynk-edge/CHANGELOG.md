@@ -11,6 +11,9 @@ All items below are changes since add-on **1.3.0**.
 - Bump whenever to 0.11
 - `serial-tcp://` uses `ModbusSerialParams(socket://…)` (modbus-connection 4.12+); timeouts
   disconnect like other serial links.
+- TCP/UDP: recycle the Modbus connection after consecutive read timeouts (dead link), avoiding gateway stalls. #683, #672
+- Re-send sensor states after Home Assistant comes back online.
+- Add deprecated mappings for three-phase `grid_relay_status` and `generator_port_usage`. #681, #685
 
 ## Release 1.3.0
 

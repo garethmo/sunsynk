@@ -87,6 +87,11 @@ class AInverter:
     """Ports already used for a Solarman unit (sharing is untested)."""
 
     @property
+    def name(self) -> str:
+        """Name / identifier of this inverter."""
+        return self.opt.ha_prefix
+
+    @property
     def availability_topic(self) -> str:
         """MQTT topic: ``online`` / ``offline`` reflect poll-loop lifecycle (retained)."""
         return f"{SS_TOPIC}/availability_1_{self.opt.ha_prefix}"
@@ -258,6 +263,37 @@ class AInverter:
                 await state.publish(self.state[state.opt.sensor])
             else:
                 await state.publish(value)
+
+    async def republish_states(self) -> int:
+        """Re-send the last published value of every non-retained sensor.
+
+        Home Assistant does not keep non-retained states across a restart, so
+        sensors reported on a fixed schedule (energy, temperatures) or only on
+        change would stay unknown until their next report. Retained (RW) sensors
+        come back from the broker and are skipped. Does nothing unless the
+        inverter is running. Returns the number of sensors re-sent.
+        """
+        if self.lifecycle != "running":
+            return 0
+        count = 0
+        for asen in list(self.ss.values()):
+            if asen.entity is None or asen.retain:
+                continue
+            val = asen.value
+            if val is None:
+                continue
+            try:
+                await asen.entity.send_state(MQTT, val)
+                # ASensor.publish() updates _last only after its own send: if one
+                # was in flight, the older value just went out after it. Send the
+                # newer value again so it is the last one Home Assistant receives.
+                if asen.value is not None and asen.value != val:
+                    await asen.entity.send_state(MQTT, asen.value)
+            except Exception as err:
+                _LOG.warning("Republish %s failed: %s", asen.name, err)
+                continue
+            count += 1
+        return count
 
     async def connect(self) -> None:
         """Connect."""
@@ -462,6 +498,25 @@ class AInverter:
 
 
 STATE: list[AInverter] = []
+
+REPUBLISH_DELAYS = (10, 60)
+"""Seconds after Home Assistant comes online to re-send states: the first pass
+once HA processed the discovery payload, the second for late subscriptions."""
+
+
+async def republish_all_states(delays: Iterable[float] = REPUBLISH_DELAYS) -> None:
+    """Re-send the states of all inverters after Home Assistant came online."""
+    start = time.monotonic()
+    for delay in delays:
+        await asyncio.sleep(max(0.0, start + delay - time.monotonic()))
+        for ist in STATE:
+            count = await ist.republish_states()
+            _LOG.debug(
+                "Republished %s states for %s (%ss after HA online)",
+                count,
+                ist.name,
+                int(delay),
+            )
 
 
 def compact_exception_group(err: ExceptionGroup) -> str:
