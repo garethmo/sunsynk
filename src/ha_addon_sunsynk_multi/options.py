@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
+from cattrs.gen import make_dict_structure_fn
 from mqtt_entity.options import CONVERTER, MQTTOptions
 from whenever import Time
 
@@ -192,5 +193,35 @@ def time_structure_hook(value: str, _: type | None = None) -> Time:
         _LOG.error("Invalid time: %s (expected hh:mm)", value)
         raise ValueError(f"Invalid time: {value} (expected hh:mm)") from exc
 
+
+# Build the default dataclass structurer once so the custom hook below can
+# delegate to it without recursing.
+_struct_inverter_options_base = make_dict_structure_fn(InverterOptions, CONVERTER)
+
+
+def _structure_inverter_options(value: dict, _: type | None = None) -> InverterOptions:
+    """Structure InverterOptions, coercing dongle_serial_number string→int.
+
+    Older add-on versions stored DONGLE_SERIAL_NUMBER with schema ``str?``.
+    Users upgrading from that schema may have the value stored as a string in
+    HA Supervisor's database.  We coerce it here so startup does not fail.
+    """
+    raw = value.get("dongle_serial_number", value.get("DONGLE_SERIAL_NUMBER"))
+    if isinstance(raw, str):
+        try:
+            coerced = int(raw)
+        except ValueError:
+            coerced = 0
+            _LOG.warning(
+                "DONGLE_SERIAL_NUMBER %r is not a valid integer; defaulting to 0", raw
+            )
+        # Normalise to lowercase key so the base structurer sees a consistent dict.
+        value = {k.lower(): v for k, v in value.items()}
+        value["dongle_serial_number"] = coerced
+
+    return _struct_inverter_options_base(value, InverterOptions)
+
+
+CONVERTER.register_structure_hook(InverterOptions, _structure_inverter_options)
 
 OPT = Options()

@@ -51,6 +51,43 @@ def test_load_env_bad() -> None:
             OPT.load_env()
 
 
+def test_dongle_serial_number_string_coercion() -> None:
+    """DONGLE_SERIAL_NUMBER stored as str (old schema) must load without error.
+
+    Older add-on versions used ``str?`` in config.yaml schema, so HA Supervisor
+    may have persisted the serial number as a plain string.  Loading such a
+    config must not raise and must coerce the value to int.
+    """
+    OPT.load_dict(
+        {
+            "inverters": [
+                {
+                    "ha_prefix": "inv1",
+                    "port": "solarman-tcp://192.168.1.1:8899",
+                    "serial_nr": "123",
+                    "dongle_serial_number": "2712345678",  # string, old schema
+                }
+            ],
+        }
+    )
+    assert OPT.inverters[0].dongle_serial_number == 2712345678
+
+    # Non-numeric string must not crash; fall back to 0.
+    OPT.load_dict(
+        {
+            "inverters": [
+                {
+                    "ha_prefix": "inv1",
+                    "port": "solarman-tcp://192.168.1.1:8899",
+                    "serial_nr": "123",
+                    "dongle_serial_number": "not-a-number",
+                }
+            ],
+        }
+    )
+    assert OPT.inverters[0].dongle_serial_number == 0
+
+
 @patch("ha_addon_sunsynk_multi.options.MQTTOptions.init_addon")
 async def test_legacy_port_migration(mock_init: MagicMock) -> None:
     """Legacy serial:// and tcp+dongle migrate via PORT schemes."""

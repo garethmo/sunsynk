@@ -16,13 +16,12 @@ arch:
 map:
   - share:rw
   - app_config:rw
-  - share:rw
 options:
   INVERTERS:
     - SERIAL_NR: "007"
       HA_PREFIX: SS
       MODBUS_ID: 1
-      DONGLE_SERIAL_NUMBER: "0"
+      DONGLE_SERIAL_NUMBER: 0
       PORT: "tcp://homeassistant.local:502"
   SENSOR_DEFINITIONS: single-phase
   SENSORS:
@@ -54,7 +53,7 @@ schema:
     - SERIAL_NR: str
       HA_PREFIX: str
       MODBUS_ID: int(1,16)
-      DONGLE_SERIAL_NUMBER: str?
+      DONGLE_SERIAL_NUMBER: int?
       PORT: str
   SENSOR_DEFINITIONS: list(single-phase|single-phase-16kw|three-phase|three-phase-hv)
   SENSOR_OVERRIDES:
