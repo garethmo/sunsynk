@@ -47,10 +47,12 @@ copy_addon() {
 
     cf="$1/config.localtest.yaml"
     cp "$1/config.yaml" "$cf"
-    sed -i '' 's/image:/# image:/' "$cf"
-    sed -i '' 's/name: /name: A_LOCAL /' "$cf"
-    sed -i '' "s/version: \"/version: \"v${num}_/" "$cf"
+    sed -i.bak 's/image:/# image:/' "$cf"
+    sed -i.bak 's/name: /name: A_LOCAL /' "$cf"
+    sed -i.bak "s/version: \"/version: \"v${num}_/" "$cf"
+    rm -f "$cf.bak"
     cp -f "$cf" "$DEST/$1/config.yaml"
+    rm -f "$cf"
 }
 
 copy_builder() {
