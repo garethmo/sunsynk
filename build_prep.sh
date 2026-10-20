@@ -18,7 +18,9 @@ fi
 echo "Preparing build for '$ADDON' with version '$VER'"
 
 mkdir -p $ADDON/$PACKAGE
-cp pyproject.toml MANIFEST.in LICENSE README.md uv.lock $ADDON/$PACKAGE/
+for f in pyproject.toml LICENSE README.md uv.lock; do
+  [ -f "$f" ] && cp "$f" "$ADDON/$PACKAGE/"
+done
 cp -r ./src $ADDON/$PACKAGE/
 
 # update version in pyproject.toml
