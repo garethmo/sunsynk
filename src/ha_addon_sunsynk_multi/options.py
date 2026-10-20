@@ -200,26 +200,28 @@ _struct_inverter_options_base = make_dict_structure_fn(InverterOptions, CONVERTE
 
 
 def _structure_inverter_options(value: dict, _: type | None = None) -> InverterOptions:
-    """Structure InverterOptions, coercing dongle_serial_number string→int.
+    """Structure InverterOptions, ensuring lowercase keys and coercing dongle_serial_number.
 
     Older add-on versions stored DONGLE_SERIAL_NUMBER with schema ``str?``.
     Users upgrading from that schema may have the value stored as a string in
     HA Supervisor's database.  We coerce it here so startup does not fail.
     """
-    raw = value.get("dongle_serial_number", value.get("DONGLE_SERIAL_NUMBER"))
+    # Always normalize all keys to lowercase (Supervisor passes uppercase keys from options.json)
+    lowered = {k.lower(): v for k, v in value.items()}
+
+    raw = lowered.get("dongle_serial_number")
     if isinstance(raw, str):
         try:
-            coerced = int(raw)
+            lowered["dongle_serial_number"] = int(raw)
         except ValueError:
-            coerced = 0
+            lowered["dongle_serial_number"] = 0
             _LOG.warning(
                 "DONGLE_SERIAL_NUMBER %r is not a valid integer; defaulting to 0", raw
             )
-        # Normalise to lowercase key so the base structurer sees a consistent dict.
-        value = {k.lower(): v for k, v in value.items()}
-        value["dongle_serial_number"] = coerced
+    elif raw is None:
+        lowered["dongle_serial_number"] = 0
 
-    return _struct_inverter_options_base(value, InverterOptions)
+    return _struct_inverter_options_base(lowered, InverterOptions)
 
 
 CONVERTER.register_structure_hook(InverterOptions, _structure_inverter_options)

@@ -88,6 +88,25 @@ def test_dongle_serial_number_string_coercion() -> None:
     assert OPT.inverters[0].dongle_serial_number == 0
 
 
+    # Uppercase keys from options.json with integer DONGLE_SERIAL_NUMBER
+    OPT.load_dict(
+        {
+            "INVERTERS": [
+                {
+                    "HA_PREFIX": "inv1",
+                    "PORT": "tcp://192.168.1.1:502",
+                    "SERIAL_NR": "123",
+                    "MODBUS_ID": 1,
+                    "DONGLE_SERIAL_NUMBER": 0,
+                }
+            ],
+        }
+    )
+    assert OPT.inverters[0].dongle_serial_number == 0
+    assert OPT.inverters[0].ha_prefix == "inv1"
+    assert OPT.inverters[0].modbus_id == 1
+
+
 @patch("ha_addon_sunsynk_multi.options.MQTTOptions.init_addon")
 async def test_legacy_port_migration(mock_init: MagicMock) -> None:
     """Legacy serial:// and tcp+dongle migrate via PORT schemes."""
