@@ -4,7 +4,7 @@ description: Add-on for a Sunsynk/Deye branded Inverter
 version: "local-dev"
 slug: hass-addon-sunsynk-edge
 # image: ghcr.io/kellerza/hass-addon-sunsynk-multi
-url: "https://kellerza.github.io/sunsynk"
+url: "https://github.com/garethmo/sunsynk"
 services: ["mqtt:need"]
 hassio_api: true
 hassio_role: homeassistant

@@ -2,4 +2,4 @@
 
 The developer version of the addon. Contains the latest changes committed to the Github repository.
 
-<https://github.com/kellerza/sunsynk/commits/>
+See the [Documentation](DOCS.md) or repository documentation in [docs/](../docs/README.md).

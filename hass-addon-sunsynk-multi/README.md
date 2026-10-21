@@ -4,5 +4,4 @@ An add-on to read Inverter Sensors and push them to MQTT. It supports Home Assis
 
 The addon supports multiple inverters and allows you to update the inverter settings.
 
-See the docs for more info -
-[https://kellerza.github.io/sunsynk](https://kellerza.github.io/sunsynk/reference/multi-options)
+See the [Documentation](DOCS.md) or repository documentation in [docs/](../docs/README.md).

@@ -336,7 +336,7 @@ class AInverter:
             detail = str(exc).strip() or type(exc).__name__
             raise ConnectionError(
                 f"No response on the Modbus interface {self.opt.port}: {detail}, "
-                "see https://kellerza.github.io/sunsynk/guide/fault-finding"
+                "see https://github.com/garethmo/sunsynk/blob/main/docs/guide/fault-finding.md"
             ) from exc
 
         assert self.identity is not None
@@ -350,7 +350,7 @@ class AInverter:
         if not await self.read_sensors_retry(sensors=sensors):
             raise ConnectionError(
                 f"No response on the Modbus interface {self.opt.port}, "
-                "see https://kellerza.github.io/sunsynk/guide/fault-finding"
+                "see https://github.com/garethmo/sunsynk/blob/main/docs/guide/fault-finding.md"
             )
         await self.set_lifecycle("running")
 
