@@ -2,8 +2,8 @@
 
 How register I/O deadlines, pacing, and retries work in sunsynk and the Home Assistant add-on.
 Background on the v1.0.0 stack change is [modbus-connection.md](modbus-connection.md). User-facing
-tuning tips are in [fault-finding](../www/docs/guide/fault-finding.md#c-reducing-timeouts) and
-[multi-options](../www/docs/reference/multi-options.md).
+tuning tips are in [fault-finding](guide/fault-finding.md#c-reducing-timeouts) and
+[multi-options](reference/multi-options.md).
 
 Reported regressions after the v1.0.0 move from pymodbus to tmodbus / modbus-connection are tracked
 in [#672](https://github.com/kellerza/sunsynk/issues/672).

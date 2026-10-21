@@ -50,6 +50,31 @@ def _running_ist() -> AInverter:
     return ist
 
 
+async def test_publish_initial_states() -> None:
+    """Publish initial state for all visible sensors with an entity and a state value."""
+    ist = _running_ist()
+    for asen in ist.ss.values():
+        asen._last = None
+
+    sen_power = ist.ss["power"].opt.sensor
+    sen_energy = ist.ss["energy"].opt.sensor
+    sen_rw = ist.ss["rw"].opt.sensor
+    ist.state.track(sen_power, sen_energy, sen_rw)
+    ist.state.values[sen_power] = 200
+    ist.state.values[sen_energy] = 15.0
+    ist.state.values[sen_rw] = 50
+
+    # 'power', 'energy', 'rw' are published (rw with retain=True)
+    # 'never' has no value in state -> skipped
+    # 'hidden' has no entity -> skipped
+    assert await ist.publish_initial_states() == 3
+
+    ist.ss["power"].entity.send_state.assert_awaited_once_with(MQTT, 200, retain=False)  # type: ignore[union-attr]
+    ist.ss["energy"].entity.send_state.assert_awaited_once_with(MQTT, 15.0, retain=False)  # type: ignore[union-attr]
+    ist.ss["rw"].entity.send_state.assert_awaited_once_with(MQTT, 50, retain=True)  # type: ignore[union-attr]
+    ist.ss["never"].entity.send_state.assert_not_awaited()  # type: ignore[union-attr]
+
+
 async def test_republish_states_sends_last_published_non_retained() -> None:
     """Only non-retained sensors with an entity and a published value are re-sent."""
     ist = _running_ist()

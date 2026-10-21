@@ -264,6 +264,29 @@ class AInverter:
             else:
                 await state.publish(value)
 
+    async def publish_initial_states(self) -> int:
+        """Publish initial state for all visible sensors that have a value in state.
+
+        Called right after discovery on startup so all sensors have an immediate
+        MQTT topic and value without waiting for their reporting schedules (60s/300s).
+        """
+        if self.lifecycle != "running":
+            return 0
+        count = 0
+        for asen in list(self.ss.values()):
+            if asen.entity is None or not asen.visible_on(self):
+                continue
+            val = self.state.get(asen.opt.sensor)
+            if val is None:
+                continue
+            try:
+                await asen.publish(val)
+                count += 1
+            except Exception as err:
+                _LOG.warning("Initial publish %s failed: %s", asen.name, err)
+        _LOG.info("Inverter %s: published initial state for %s sensors", self.index, count)
+        return count
+
     async def republish_states(self) -> int:
         """Re-send the last published value of every non-retained sensor.
 
@@ -396,6 +419,7 @@ class AInverter:
             await MQTT.monitor_homeassistant_status()
         if self.entity_near_realtime is not None:
             await self.entity_near_realtime.send_state(MQTT, "OFF", retain=True)
+        await self.publish_initial_states()
         return True
 
     def init_sensors(self, soptions: SensorOptions | None = None) -> None:

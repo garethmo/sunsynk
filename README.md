@@ -9,13 +9,22 @@ This code was developed on a [Sunsynk](https://www.sunsynk.org/) 5.5 kWh inverte
 
 ## Documentation
 
-Refer to [https://kellerza.github.io/sunsynk/](https://kellerza.github.io/sunsynk/)
+Full documentation is available directly in this repository in the [**docs/**](docs/README.md) directory (and published online at [https://kellerza.github.io/sunsynk/](https://kellerza.github.io/sunsynk/)):
+
+- [**Getting Started & Installation**](docs/guide/getting-started.md)
+- [**Wiring Guide & Pinouts**](docs/guide/wiring.md)
+- [**Deployment Options**](docs/guide/deployment-options.md)
+- [**Add-on Options Reference**](docs/reference/multi-options.md)
+- [**Fault Finding & Troubleshooting**](docs/guide/fault-finding.md)
+- [**Modbus Timeouts & Pacing**](docs/timeouts.md)
+- [**Power Flow Card & Dashboards**](docs/examples/lovelace.md)
+- [**Energy Management**](docs/guide/energy-management.md)
 
 ## Home Assistant Sunsynk Add-On
 
 For the Add-On you require Home Assistant OS and a RS-485 adaptor to connect to your Sunsynk
 inverter. Sensors are read using the Modbus protocol and sent to a MQTT server. See
-[deployment options](https://kellerza.github.io/sunsynk/guide/deployment-options) for examples of
+[deployment options](docs/guide/deployment-options.md) for examples of
 tested hardware.
 
 ### Installation
@@ -35,7 +44,7 @@ Below an example of the HomeAssistant Energy management dashboard using sensors 
 
 ## Running outside Home Assistant OS
 
-See the [standalone-deploment](https://kellerza.github.io/sunsynk/guide/standalone-deployment)
+See the [standalone-deployment](docs/guide/standalone-deployment.md)
 documentation for detail on how to deploy with Docker Compose.
 
 ## Sunsynk Python Library
